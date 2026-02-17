@@ -1,7 +1,3 @@
-﻿# ============================================
-# BlackBones Tools ULTRA FAST Installer
-# ============================================
-
 $Temp = "$env:TEMP\BlackBonesTools"
 $AriaDir = "$Temp\aria2"
 
@@ -16,125 +12,99 @@ $MillenniumDir = "$Temp\MillenniumExtract"
 $OkSteamTools = $false
 $OkMillennium = $false
 
-Write-Host ""
-Write-Host "🔥 BlackBones Tools ULTRA FAST Installer 🔥" -ForegroundColor Cyan
-Write-Host ""
+function Barra($p){
+    Write-Progress -Activity "BlackBones Tools Installer" -Status "$p% completado" -PercentComplete $p
+}
 
-# ==========================
-# Preparar carpetas
-# ==========================
+Barra 5
+
 New-Item -ItemType Directory -Path $Temp -Force | Out-Null
 New-Item -ItemType Directory -Path $AriaDir -Force | Out-Null
 
-# ==========================
 # Descargar aria2
-# ==========================
-Write-Host "⬇ Preparando motor de descarga..." -ForegroundColor Yellow
-
 $AriaZip = "$Temp\aria2.zip"
-Invoke-WebRequest $AriaURL -OutFile $AriaZip -UseBasicParsing
-Expand-Archive $AriaZip -DestinationPath $AriaDir -Force
+Invoke-WebRequest $AriaURL -OutFile $AriaZip -UseBasicParsing | Out-Null
+Expand-Archive $AriaZip -DestinationPath $AriaDir -Force | Out-Null
 
 $AriaExe = Get-ChildItem $AriaDir -Recurse -Filter aria2c.exe | Select-Object -First 1 -ExpandProperty FullName
 
-# ==========================
-# Función descarga rápida
-# ==========================
-function DescargarRapido($url,$destino) {
-    & $AriaExe -x 16 -s 16 -k 1M -o (Split-Path $destino -Leaf) -d (Split-Path $destino) $url
+Barra 20
+
+function Descargar($url,$dest){
+    & $AriaExe -x 16 -s 16 --console-log-level=error --summary-interval=0 `
+    -o (Split-Path $dest -Leaf) -d (Split-Path $dest) $url | Out-Null
 }
 
-# ==========================
-# Descargar SteamTools
-# ==========================
-Write-Host "⬇ Descargando SteamTools..." -ForegroundColor Yellow
-DescargarRapido $SteamToolsURL $SteamToolsEXE
+# SteamTools
+Descargar $SteamToolsURL $SteamToolsEXE
 
-# ==========================
-# Instalar SteamTools
-# ==========================
 if (Test-Path $SteamToolsEXE) {
-    Write-Host "➡ Instalando SteamTools..." -ForegroundColor Yellow
     Start-Process $SteamToolsEXE -ArgumentList "/S" -Wait -WindowStyle Hidden
     $OkSteamTools = $true
 }
 
-# ==========================
-# Descargar Millennium
-# ==========================
-Write-Host "⬇ Descargando Millennium..." -ForegroundColor Yellow
-DescargarRapido $MillenniumURL $MillenniumZIP
+Barra 55
 
-# ==========================
-# Extraer Millennium
-# ==========================
+# Millennium
+Descargar $MillenniumURL $MillenniumZIP
+
 if (Test-Path $MillenniumZIP) {
-    Expand-Archive $MillenniumZIP -DestinationPath $MillenniumDir -Force
+    Expand-Archive $MillenniumZIP -DestinationPath $MillenniumDir -Force | Out-Null
 }
 
-# ==========================
-# Detectar Steam
-# ==========================
-Write-Host "🔎 Buscando Steam..." -ForegroundColor Yellow
+Barra 75
 
-$SteamExe = Get-ChildItem "C:\","D:\","E:\","F:\" -ErrorAction SilentlyContinue -Recurse -Filter steam.exe |
+# Buscar Steam
+$SteamExe = Get-ChildItem "C:\","D:\","E:\" -ErrorAction SilentlyContinue -Recurse -Filter steam.exe |
 Select-Object -First 1 -ExpandProperty FullName
 
 if ($SteamExe) {
 
     $SteamPath = Split-Path $SteamExe
-    Write-Host "✅ Steam encontrado en: $SteamPath" -ForegroundColor Green
 
-    # Cerrar Steam
     Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
 
-    # Detectar carpeta correcta dentro del ZIP
     $SourcePath = $MillenniumDir
-
     if (Test-Path "$MillenniumDir\MillenniumFiles") {
         $SourcePath = "$MillenniumDir\MillenniumFiles"
     }
 
-    # Copiar archivos
     Copy-Item "$SourcePath\*" $SteamPath -Recurse -Force
-
-    # Abrir Steam
     Start-Process $SteamExe | Out-Null
 
     $OkMillennium = $true
-
-} else {
-    Write-Host "❌ No se encontró Steam en el sistema." -ForegroundColor Red
 }
 
-# ==========================
-# Limpieza
-# ==========================
+Barra 100
+Write-Progress -Activity "BlackBones Tools Installer" -Completed
+
 Remove-Item $Temp -Recurse -Force -ErrorAction SilentlyContinue
 
-# ==========================
-# Resultado final
-# ==========================
 Write-Host ""
-Write-Host "----------------------------------"
-Write-Host "📌 RESULTADO:" -ForegroundColor Cyan
+Write-Host "RESULTADO:" -ForegroundColor Cyan
 
 if ($OkSteamTools) {
-    Write-Host "✅ SteamTools OK" -ForegroundColor Green
+    Write-Host "SteamTools: OK" -ForegroundColor Green
 } else {
-    Write-Host "❌ SteamTools FALLÓ" -ForegroundColor Red
+    Write-Host "SteamTools: ERROR" -ForegroundColor Red
 }
 
 if ($OkMillennium) {
-    Write-Host "✅ Millennium OK" -ForegroundColor Green
+    Write-Host "Millennium: OK" -ForegroundColor Green
 } else {
-    Write-Host "❌ Millennium FALLÓ" -ForegroundColor Red
+    Write-Host "Millennium: ERROR" -ForegroundColor Red
 }
 
 Write-Host ""
-Write-Host "VAPORES AL MÁXIMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" -ForegroundColor Magenta
-Write-Host "🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥" -ForegroundColor Magenta
-Write-Host ""
 
-Read-Host "Presiona Enter para salir"
+# ASCII BLACKBONES
+Write-Host "██████╗ ██╗      █████╗  ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ██╗███████╗███████╗" -ForegroundColor Magenta
+Write-Host "██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔══██╗██╔═══██╗████╗  ██║██╔════╝██╔════╝" -ForegroundColor Magenta
+Write-Host "██████╔╝██║     ███████║██║     █████╔╝ ██████╔╝██║   ██║██╔██╗ ██║█████╗  ███████╗" -ForegroundColor Magenta
+Write-Host "██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██╔══██╗██║   ██║██║╚██╗██║██╔══╝  ╚════██║" -ForegroundColor Magenta
+Write-Host "██████╔╝███████╗██║  ██║╚██████╗██║  ██╗██████╔╝╚██████╔╝██║ ╚████║███████╗███████║" -ForegroundColor Magenta
+Write-Host "╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝" -ForegroundColor Magenta
+
+Write-Host ""
+Write-Host "🔥 VAPORES AL MÁXIMO 🔥" -ForegroundColor Yellow
