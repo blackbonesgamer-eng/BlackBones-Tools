@@ -1,5 +1,3 @@
-﻿#requires -RunAsAdministrator
-
 # ============================================
 # BlackBones Tools Web Installer
 # Descarga + SteamTools + Millennium sin GUI
@@ -106,3 +104,4 @@ Write-Host "🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
 Write-Host ""
 
 Read-Host "Presiona Enter para salir"
+
