@@ -12,12 +12,19 @@ if (-not $SteamPath) {
 
 Write-Host "✅ Steam encontrado en: $SteamPath" -ForegroundColor Green
 
-$DestinoFolder = "$SteamPath\ext"
+# Ruta correcta de tokens
+$DestinoFolder = "$SteamPath\config\stplug-in"
 New-Item -ItemType Directory -Path $DestinoFolder -Force | Out-Null
 
 # Obtener lista de tokens desde GitHub
 $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
-$files = Invoke-RestMethod $Api
+
+try {
+    $files = Invoke-RestMethod $Api
+} catch {
+    Write-Host "❌ Error conectando con GitHub" -ForegroundColor Red
+    exit
+}
 
 $tokens = @()
 
@@ -67,5 +74,19 @@ foreach ($index in $indices) {
     }
 }
 
+# Reiniciar Steam para aplicar tokens
 Write-Host ""
-Write-Host "🔥 TOKENS INSTALADOS 🔥" -ForegroundColor Magenta
+Write-Host "🔄 Reiniciando Steam..." -ForegroundColor Cyan
+
+Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep 2
+
+$SteamExe = "$SteamPath\steam.exe"
+
+if (Test-Path $SteamExe) {
+    Start-Process $SteamExe
+}
+
+Write-Host ""
+Write-Host "🔥 TOKENS INSTALADOS CORRECTAMENTE 🔥" -ForegroundColor Magenta
+
