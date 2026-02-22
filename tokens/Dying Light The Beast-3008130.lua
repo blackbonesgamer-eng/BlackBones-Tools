@@ -1,0 +1,39 @@
+-- Dying Ligh​‌‌​​​‌‌​‌‌​​​‌‌​​‌‌​‌​​​​‌‌​​​‌​​‌‌​​​​​‌‌​​‌​​​​‌‌​​‌​​‌‌​​‌​​​​‌‌​​‌‌​‌‌​​‌​​​​‌‌​‌​​​​‌‌​‌‌‌​​‌‌​‌​​​​‌‌‌​​‌​​‌‌​​‌‌​‌‌​​​‌​t: The Beast
+-- AppID 3008130 | Generated on 2026-02-21 05:07 UTC | openlua.cloud
+
+-- Main Application
+addappid(3008130, 1, "5eacefd012dbfb99c51dc01573afeccbeae511575d049dbdb7a796559d455fa0")
+
+-- Content Depots (22)
+addappid(3008132, 1, "6028aa5b91f9bf95194ec527c2ebdccd62e9a5df423e65ce32a73145aaa6c6b3") -- Dying Light: The Beast - Content
+addappid(3008133, 1, "434623d389db7ee032958e856f56adcc7da748791f86963e54523321e2e57ee9") -- Dying Light: The Beast - Windows
+addappid(3008134, 1, "9c4e2acba05efb8e83b8b84191c8ea0454009ee00e7fc407eb32ad2c16cd5d9e") -- Dying Light: The Beast - Windows
+addappid(3008135, 1, "d47e689c1f7c949b76c2d74d998ef7cf4db0ebb66ef327e68a4e7e1b4bc931dd") -- Dying Light: The Beast - Content
+addappid(3008136, 1, "4246c4c3f664e9ac92b6f9bdabea8f9d178d64e7b7f78ce2e47d3261e429d21f") -- Dying Light: The Beast - Content
+addappid(3008137, 1, "91d23606572ed7cd2a17f0a53854b43ab17be7f90b9121c2e133df6bf9628b15") -- Dying Light: The Beast - Content
+addappid(3008138, 1, "b087b304a3080e8bb9b868f067c8b57d6eac1c0018d81a8d563cc7dcaf6ca050") -- Dying Light: The Beast - Content
+addappid(3008139, 1, "9ca49a179625bb0a94c6cef85afa175dbf6f70f640eea01565cf29ee9b89b1a4") -- Dying Light: The Beast - Content
+addappid(3061861, 1, "2f7e9b1d05e7bc30e55829af984f423c7891ecb354db0e336f3cc8f8115aa9a8") -- Dying Light: The Beast - Content
+addappid(3061862, 1, "58441f3a3fc23c78ee6ae062b402e98c3881f13b870b2945df538700a9ee98ee") -- Dying Light: The Beast - Content
+addappid(3061863, 1, "5046b1035705c5b2cb125dcffa5f4e5e2fc859a4be1568f05cb1690cd5d8a2ed") -- Dying Light: The Beast - Content
+addappid(3061864, 1, "38076b913ef2e4d848b83c972e455b0ed335321b7b3275f956819d56618137cc") -- Dying Light: The Beast - Content
+addappid(3061865, 1, "062b2caf7c45bb6c993a1ccc89d4241601e83976f43b4d7a4ec73b6e87a23baf") -- Dying Light: The Beast - Content
+addappid(3061866, 1, "da6a491e78d34f913d3a35f81992ad8b9554a45ad3405eb90104535c2a190a1c") -- Dying Light: The Beast - Content
+addappid(3061867, 1, "72b42328ca9c827d6c99a336214d08101a2d1ea131aa4c646a506d94d5c25594") -- Dying Light: The Beast - Content
+addappid(3061868, 1, "4a4e46600e98b44593fe9d6c5f32ffaee4984a804a65841da31aa5f3d562e9c5") -- Dying Light: The Beast - Content
+addappid(3061869, 1, "a3cc7e3956b21127479c97bde2183a0350a0e00b1866e328210cfd18f9449d2a") -- Dying Light: The Beast - Content
+addappid(3592041, 1, "32f10ad2de76688dc0970aebede422b2921593489edc03e6e1e90d447aeb3890") -- Dying Light: The Beast - Windows
+addappid(3592042, 1, "55b8d3f1f8f7b6a5285b4c11635a22a47948493c275ac657e6a3e7ec22a0912b") -- Dying Light: The Beast - Content
+addappid(3592043, 1, "d6564bfa4427ac630cf6a83e8a8dd0da310c59f95cb79634b17a8ce1822922ae") -- Dying Light: The Beast - Content
+addappid(3592044, 1, "d36aeb87d7dc3805c50fbbbbd0a592b0e112ba31cca48aaba4a4b12169ab4a06") -- Dying Light: The Beast - Content
+addappid(3592047, 1, "a6d2c01076098ca0ecbe70d4ec21e3c3acfe1671974a526ea883096a51067cec") -- Dying Light: The Beast - Windows
+
+-- DLCs with Content (3)
+addappid(3707623, 1, "e7a49cf3e8049304b31ac9af2380050346b19274b6429680fa656ca2ef8132ff") -- Dying Light The Beast - Soundtrack
+addappid(3707622, 1, "dbba296c59b4dd12cfbf3e831d228341905cbfe72a6f39b9ab9ab535e2aa2390") -- Dying Light The Beast - Map Guide
+addappid(3707621, 1, "04cd9ab87835457d4a64c2e33c8bfb34ec9873a58306082dd1554fa31e61b08c") -- Dying Light The Beast - Wallpapers
+
+-- DLCs without Dedicated Depots (3)
+addappid(3707650) -- Dying Light The Beast - Castor Woods Prepper Bundle
+addappid(3592040) -- Dying Light The Beast - Hero Of Harran Bundle
+addappid(3707710) -- Dying Light The Beast Standard to Deluxe Upgrade
