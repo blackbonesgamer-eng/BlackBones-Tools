@@ -162,7 +162,8 @@ function InstalarComplementos {
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
-        $mods = Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" }
+        # FORZAR ARRAY (IMPORTANTE)
+        $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
     }
     catch {
         Write-Host "❌ Error conectando con el repositorio"
@@ -170,10 +171,11 @@ function InstalarComplementos {
         return
     }
 
-    $mods = $mods | Where-Object { $_.type -eq "dir" }
+    # SOLO CARPETAS = MODS
+    $mods = $items | Where-Object { $_.type -eq "dir" }
 
-    if (!$mods) {
-        Write-Host "❌ No hay complementos disponibles"
+    if (!$mods -or $mods.Count -eq 0) {
+        Write-Host "❌ No se encontraron complementos en el repo"
         Pause
         return
     }
@@ -184,20 +186,47 @@ function InstalarComplementos {
         Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
     }
 
-    $sel = Read-Host "`nSeleccione número"
+    Write-Host ""
+    $sel = Read-Host "Seleccione número"
 
-    if (-not ($sel -match '^\d+$')) { return }
+    if (-not ($sel -match '^\d+$')) {
+        Write-Host "Selección inválida"
+        Pause
+        return
+    }
 
-    $mod = $mods[[int]$sel - 1]
+    $index = [int]$sel - 1
 
-    # Detectar Steam
+    if ($index -lt 0 -or $index -ge $mods.Count) {
+        Write-Host "Número fuera de rango"
+        Pause
+        return
+    }
+
+    $mod = $mods[$index]
+    $modName = $mod.name.ToLower()
+
+    Write-Host ""
+    Write-Host "Buscando juego instalado..." -ForegroundColor Cyan
+
+    # =============================
+    # DETECTAR STEAM
+    # =============================
+
     $SteamPath = ObtenerSteam
-    if (-not $SteamPath) { return }
+    if (-not $SteamPath) { Pause; return }
 
     $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
-    $content = Get-Content $LibrariesFile
 
+    if (!(Test-Path $LibrariesFile)) {
+        Write-Host "❌ No se encontraron bibliotecas Steam"
+        Pause
+        return
+    }
+
+    $content = Get-Content $LibrariesFile
     $paths = @()
+
     foreach ($line in $content) {
         if ($line -match '"path"\s+"(.+)"') {
             $paths += $matches[1].Replace("\\","\")
@@ -205,7 +234,6 @@ function InstalarComplementos {
     }
 
     $GamePath = $null
-    $modName = $mod.name.ToLower()
 
     foreach ($lib in $paths) {
 
@@ -215,7 +243,10 @@ function InstalarComplementos {
         $games = Get-ChildItem $common -Directory
 
         foreach ($game in $games) {
-            if ($game.Name.ToLower() -like "*$modName*") {
+
+            $gameName = $game.Name.ToLower()
+
+            if ($gameName -like "*$modName*") {
                 $GamePath = $game.FullName
                 break
             }
@@ -225,20 +256,21 @@ function InstalarComplementos {
     }
 
     if (-not $GamePath) {
-        Write-Host "❌ Juego no encontrado"
+        Write-Host "❌ No se encontró el juego instalado"
         Pause
         return
     }
 
-    Write-Host "Juego detectado: $GamePath" -ForegroundColor Green
+    Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
+    Write-Host ""
 
     # =============================
-    # DESCARGA RECURSIVA
+    # DESCARGA RECURSIVA (SUBCARPETAS)
     # =============================
 
     function DescargarContenido($url, $destino) {
 
-        $items = Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" }
+        $items = @(Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" })
 
         foreach ($item in $items) {
 
@@ -255,6 +287,7 @@ function InstalarComplementos {
             else {
 
                 Write-Host "Descargando $($item.name)..."
+
                 Invoke-WebRequest $item.download_url -OutFile $rutaDestino -UseBasicParsing
             }
         }
@@ -262,7 +295,8 @@ function InstalarComplementos {
 
     DescargarContenido $mod.url $GamePath
 
-    Write-Host "`n✅ Complemento instalado correctamente" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Cyan
     Pause
 }
 
@@ -299,6 +333,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
