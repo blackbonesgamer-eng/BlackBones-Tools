@@ -1,38 +1,64 @@
 Clear-Host
 
 # =============================
-# LOGO ANIMADO
+# LOGO BLACKBONES ANIMADO
 # =============================
 
 function LogoPrincipal {
 
 $logo = @"
-██████╗ ██╗      █████╗  ██████╗██╗  ██╗
-██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝
-██████╔╝██║     ███████║██║     █████╔╝
-██╔══██╗██║     ██╔══██║██║     ██╔═██╗
-██████╔╝███████╗██║  ██║╚██████╗██║  ██╗
-╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+██████╗ ██╗      █████╗  ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ██╗███████╗███████╗
+██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔══██╗██╔═══██╗████╗  ██║██╔════╝██╔════╝
+██████╔╝██║     ███████║██║     █████╔╝ ██████╔╝██║   ██║██╔██╗ ██║█████╗  ███████╗
+██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██╔══██╗██║   ██║██║╚██╗██║██╔══╝  ╚════██║
+██████╔╝███████╗██║  ██║╚██████╗██║  ██╗██████╔╝╚██████╔╝██║ ╚████║███████╗███████║
+╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝
 "@
 
 foreach ($line in $logo.Split("`n")) {
     Write-Host $line -ForegroundColor Magenta
-    Start-Sleep -Milliseconds 30
+    Start-Sleep -Milliseconds 80
 }
 
-Write-Host "🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "            🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
+Write-Host ""
+
+Start-Sleep 500
+}
+
+# =============================
+# SPINNER NEON
+# =============================
+
+function Spinner($texto, $loops=30) {
+
+    $chars = @("|","/","-","\")
+    
+    for ($i=0; $i -lt $loops; $i++) {
+
+        foreach ($c in $chars) {
+            Write-Host "`r$texto $c" -NoNewline -ForegroundColor Cyan
+            Start-Sleep -Milliseconds 120
+        }
+    }
+
+    Write-Host "`r$texto ✔" -ForegroundColor Green
 }
 
 # =============================
 # BARRA PROGRESO REAL
 # =============================
 
-function Progreso($texto, $tiempo=2) {
+function Progreso($texto) {
 
-    for ($i=0; $i -le 100; $i+=5) {
-        Write-Progress -Activity $texto -Status "$i% Completado" -PercentComplete $i
-        Start-Sleep -Milliseconds ($tiempo * 10)
+    for ($i=0; $i -le 100; $i+=2) {
+
+        Write-Progress -Activity $texto `
+        -Status "$i% Completado" `
+        -PercentComplete $i
+
+        Start-Sleep -Milliseconds 40
     }
 
     Write-Progress -Activity $texto -Completed
@@ -47,7 +73,8 @@ function ObtenerSteam {
     $SteamPath = (Get-ItemProperty "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue).SteamPath
 
     if (-not $SteamPath) {
-        Write-Host "❌ Steam no detectado" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "❌ Steam no detectado en el sistema" -ForegroundColor Red
         Pause
         return $null
     }
@@ -85,9 +112,11 @@ function ReiniciarSteam {
 function InstalarPlugin {
 
     Clear-Host
+
     Write-Host "⚙ PLUGIN INSTALLER" -ForegroundColor Magenta
     Write-Host ""
 
+    Spinner "Preparando instalación..."
     Progreso "Descargando Plugin..."
 
     $Temp = "$env:TEMP\BlackBones"
@@ -116,6 +145,7 @@ function InstalarPlugin {
 function ActivarJuegos {
 
     Clear-Host
+
     Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
     Write-Host ""
 
@@ -130,6 +160,7 @@ function ActivarJuegos {
     $tokens = $files | Where-Object { $_.name -like "*.lua" }
 
     Write-Host "Tokens disponibles:" -ForegroundColor Yellow
+    Write-Host ""
 
     for ($i=0; $i -lt $tokens.Count; $i++) {
         Write-Host "$($i+1)) $($tokens[$i].name)"
@@ -145,7 +176,8 @@ function ActivarJuegos {
             $file = $tokens[$idx]
             $destFile = "$Destino\$($file.name)"
 
-            Progreso "Instalando $($file.name)..."
+            Spinner "Instalando $($file.name)..."
+            Progreso "Copiando archivos..."
 
             Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
 
@@ -169,11 +201,12 @@ function Finalizar {
     Write-Host ""
     Write-Host "🔥 PROCESO COMPLETADO 🔥" -ForegroundColor Magenta
     Write-Host ""
+
     Pause
 }
 
 # =============================
-# MENU
+# MENU PRINCIPAL
 # =============================
 
 LogoPrincipal
