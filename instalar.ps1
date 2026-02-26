@@ -269,6 +269,75 @@ function InstalarComplementos {
     Pause
 }
 
+function ActualizarPlugin {
+
+    Clear-Host
+    Write-Host "🔄 ACTUALIZANDO PLUGIN..." -ForegroundColor Cyan
+
+    InstalarPlugin
+}
+
+
+function EliminarTokens {
+
+    Clear-Host
+    Write-Host "🗑 ELIMINAR TOKENS" -ForegroundColor Red
+    Write-Host ""
+
+    $SteamPath = ObtenerSteam
+    if (-not $SteamPath) { Pause; return }
+
+    $Destino = "$SteamPath\config\stplug-in"
+
+    if (!(Test-Path $Destino)) {
+        Write-Host "No hay tokens instalados"
+        Pause
+        return
+    }
+
+    $files = Get-ChildItem $Destino -Filter *.lua
+
+    if ($files.Count -eq 0) {
+        Write-Host "No se encontraron tokens"
+        Pause
+        return
+    }
+
+    Write-Host "Tokens instalados:`n"
+
+    for ($i = 0; $i -lt $files.Count; $i++) {
+        Write-Host "$($i+1)) $($files[$i].Name)" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "A) Eliminar todos"
+    Write-Host ""
+
+    $sel = Read-Host "Seleccione número o A"
+
+    if ($sel -eq "A") {
+
+        Remove-Item "$Destino\*.lua" -Force
+
+        Write-Host "✅ Todos los tokens eliminados" -ForegroundColor Green
+        Pause
+        return
+    }
+
+    if (-not ($sel -match '^\d+$')) { return }
+
+    $index = [int]$sel - 1
+
+    if ($index -ge 0 -and $index -lt $files.Count) {
+
+        Remove-Item $files[$index].FullName -Force
+
+        Write-Host "✅ Token eliminado" -ForegroundColor Green
+    }
+
+    Pause
+}
+
 # =============================
 # MENU
 # =============================
@@ -280,8 +349,10 @@ while ($true) {
     Write-Host ""
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host "1) Instalar Plugin"
-    Write-Host "2) Activar Juegos"
-    Write-Host "3) Instalar Complementos"
+    Write-Host "2) Actualizar Plugin"
+    Write-Host "3) Activar Juegos"
+    Write-Host "4) Eliminar Tokens"
+    Write-Host "5) Instalar Complementos"
     Write-Host "0) Salir"
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
@@ -291,13 +362,16 @@ while ($true) {
     switch ($op) {
 
         "1" { InstalarPlugin }
-        "2" { ActivarJuegos }
-        "3" { InstalarComplementos }
+        "2" { ActualizarPlugin }
+        "3" { ActivarJuegos }
+        "4" { EliminarTokens }
+        "5" { InstalarComplementos }
         "0" { break }
 
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
