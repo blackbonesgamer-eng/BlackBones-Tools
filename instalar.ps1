@@ -1,57 +1,63 @@
 Clear-Host
 
-# =========================
-# LOGO
-# =========================
+# =============================
+# LOGO ANIMADO
+# =============================
 
-function MostrarLogo {
+function LogoPrincipal {
 
-Write-Host ""
-Write-Host "██████╗ ██╗      █████╗  ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ██╗███████╗███████╗" -ForegroundColor Magenta
-Write-Host "██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔══██╗██╔═══██╗████╗  ██║██╔════╝██╔════╝" -ForegroundColor Magenta
-Write-Host "██████╔╝██║     ███████║██║     █████╔╝ ██████╔╝██║   ██║██╔██╗ ██║█████╗  ███████╗" -ForegroundColor Magenta
-Write-Host "██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██╔══██╗██║   ██║██║╚██╗██║██╔══╝  ╚════██║" -ForegroundColor Magenta
-Write-Host "██████╔╝███████╗██║  ██║╚██████╗██║  ██╗██████╔╝╚██████╔╝██║ ╚████║███████╗███████║" -ForegroundColor Magenta
-Write-Host "╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝" -ForegroundColor Magenta
+$logo = @"
+██████╗ ██╗      █████╗  ██████╗██╗  ██╗
+██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝
+██████╔╝██║     ███████║██║     █████╔╝
+██╔══██╗██║     ██╔══██║██║     ██╔═██╗
+██████╔╝███████╗██║  ██║╚██████╗██║  ██╗
+╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+"@
+
+foreach ($line in $logo.Split("`n")) {
+    Write-Host $line -ForegroundColor Magenta
+    Start-Sleep -Milliseconds 30
+}
+
+Write-Host "🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
 Write-Host ""
 }
 
-# =========================
-# BARRA PROGRESO
-# =========================
+# =============================
+# BARRA PROGRESO REAL
+# =============================
 
-function Barra($texto) {
-
-    Write-Host ""
-    Write-Host $texto -ForegroundColor Cyan
+function Progreso($texto, $tiempo=2) {
 
     for ($i=0; $i -le 100; $i+=5) {
         Write-Progress -Activity $texto -Status "$i% Completado" -PercentComplete $i
-        Start-Sleep -Milliseconds 80
+        Start-Sleep -Milliseconds ($tiempo * 10)
     }
 
     Write-Progress -Activity $texto -Completed
 }
 
-# =========================
+# =============================
 # DETECTAR STEAM
-# =========================
+# =============================
 
 function ObtenerSteam {
 
     $SteamPath = (Get-ItemProperty "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue).SteamPath
 
     if (-not $SteamPath) {
-        Write-Host "❌ Steam no está instalado" -ForegroundColor Red
+        Write-Host "❌ Steam no detectado" -ForegroundColor Red
+        Pause
         return $null
     }
 
     return $SteamPath
 }
 
-# =========================
+# =============================
 # REINICIAR STEAM
-# =========================
+# =============================
 
 function ReiniciarSteam {
 
@@ -60,6 +66,7 @@ function ReiniciarSteam {
 
     $SteamExe = "$SteamPath\steam.exe"
 
+    Write-Host ""
     Write-Host "🔄 Reiniciando Steam..." -ForegroundColor Yellow
 
     Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -71,14 +78,17 @@ function ReiniciarSteam {
     }
 }
 
-# =========================
+# =============================
 # INSTALAR PLUGIN
-# =========================
+# =============================
 
 function InstalarPlugin {
 
-    MostrarLogo
-    Barra "Descargando Plugin..."
+    Clear-Host
+    Write-Host "⚙ PLUGIN INSTALLER" -ForegroundColor Magenta
+    Write-Host ""
+
+    Progreso "Descargando Plugin..."
 
     $Temp = "$env:TEMP\BlackBones"
     New-Item -ItemType Directory -Path $Temp -Force | Out-Null
@@ -88,23 +98,26 @@ function InstalarPlugin {
 
     Invoke-WebRequest $URL -OutFile $EXE -UseBasicParsing
 
-    Barra "Instalando Plugin..."
+    Progreso "Instalando Plugin..."
 
     Start-Process $EXE -ArgumentList "/S" -Wait
 
+    Write-Host ""
     Write-Host "✅ Plugin instalado correctamente" -ForegroundColor Green
 
     ReiniciarSteam
     Finalizar
 }
 
-# =========================
+# =============================
 # ACTIVAR JUEGOS
-# =========================
+# =============================
 
 function ActivarJuegos {
 
-    MostrarLogo
+    Clear-Host
+    Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
+    Write-Host ""
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { return }
@@ -116,14 +129,13 @@ function ActivarJuegos {
     $files = Invoke-RestMethod $Api
     $tokens = $files | Where-Object { $_.name -like "*.lua" }
 
-    Write-Host ""
     Write-Host "Tokens disponibles:" -ForegroundColor Yellow
 
     for ($i=0; $i -lt $tokens.Count; $i++) {
         Write-Host "$($i+1)) $($tokens[$i].name)"
     }
 
-    $sel = Read-Host "Seleccione números"
+    $sel = Read-Host "`nSeleccione números"
 
     foreach ($n in ($sel -split ",")) {
 
@@ -133,7 +145,7 @@ function ActivarJuegos {
             $file = $tokens[$idx]
             $destFile = "$Destino\$($file.name)"
 
-            Barra "Instalando $($file.name)..."
+            Progreso "Instalando $($file.name)..."
 
             Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
 
@@ -145,47 +157,36 @@ function ActivarJuegos {
     Finalizar
 }
 
-# =========================
-# REPARAR
-# =========================
-
-function RepararPlugin {
-
-    Write-Host "🛠 Reparando Plugin..." -ForegroundColor Cyan
-    InstalarPlugin
-}
-
-# =========================
-# SONIDO FINAL
-# =========================
+# =============================
+# FINAL
+# =============================
 
 function Finalizar {
 
-    [console]::beep(1000,300)
-    [console]::beep(1200,300)
+    [console]::beep(900,200)
+    [console]::beep(1200,200)
 
     Write-Host ""
-    Write-Host "🔥 PROCESO COMPLETADO 🔥" -ForegroundColor Green
+    Write-Host "🔥 PROCESO COMPLETADO 🔥" -ForegroundColor Magenta
     Write-Host ""
+    Pause
 }
 
-# =========================
+# =============================
 # MENU
-# =========================
+# =============================
+
+LogoPrincipal
 
 while ($true) {
 
-    MostrarLogo
-
     Write-Host "==================================" -ForegroundColor Magenta
-    Write-Host "        PLUGIN MANAGER" -ForegroundColor Cyan
+    Write-Host "1) Instalar Plugin" -ForegroundColor Cyan
+    Write-Host "2) Activar Juegos" -ForegroundColor Cyan
+    Write-Host "3) Actualizar Plugin" -ForegroundColor Cyan
+    Write-Host "4) Reparar" -ForegroundColor Cyan
+    Write-Host "0) Salir" -ForegroundColor Cyan
     Write-Host "==================================" -ForegroundColor Magenta
-    Write-Host ""
-    Write-Host "1) Instalar Plugin"
-    Write-Host "2) Activar Juegos"
-    Write-Host "3) Actualizar Plugin"
-    Write-Host "4) Reparar"
-    Write-Host "0) Salir"
     Write-Host ""
 
     $op = Read-Host "Seleccione opción"
@@ -195,7 +196,7 @@ while ($true) {
         "1" { InstalarPlugin }
         "2" { ActivarJuegos }
         "3" { InstalarPlugin }
-        "4" { RepararPlugin }
+        "4" { InstalarPlugin }
         "0" { break }
 
         default { Write-Host "Opción inválida" -ForegroundColor Red }
