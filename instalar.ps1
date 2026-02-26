@@ -358,8 +358,8 @@ while ($true) {
     Write-Host "1) Instalar Plugin"
     Write-Host "2) Actualizar Plugin"
     Write-Host "3) Activar Juegos"
-    Write-Host "4) Eliminar Tokens"
-    Write-Host "5) Instalar Complementos"
+    Write-Host "4) Eliminar Juegos"
+    Write-Host "5) Instalar Bypass"
     Write-Host "0) Salir"
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
@@ -378,6 +378,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
