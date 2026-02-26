@@ -90,7 +90,8 @@ function InstalarPlugin {
 function ActivarJuegos {
 
     Clear-Host
-    Write-Host "🎮 ACTIVANDO JUEGOS..." -ForegroundColor Cyan
+    Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
+    Write-Host ""
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
@@ -100,17 +101,49 @@ function ActivarJuegos {
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
 
-    $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
-    $tokens = $files | Where-Object { $_.name -like "*.lua" }
-
-    foreach ($file in $tokens) {
-
-        $destFile = "$Destino\$($file.name)"
-
-        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+    try {
+        $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
+    }
+    catch {
+        Write-Host "❌ Error conectando con el repositorio"
+        Pause
+        return
     }
 
-    Write-Host "✅ Juegos activados" -ForegroundColor Green
+    $tokens = $files | Where-Object { $_.name -like "*.lua" }
+
+    if ($tokens.Count -eq 0) {
+        Write-Host "❌ No se encontraron tokens"
+        Pause
+        return
+    }
+
+    Write-Host "Tokens disponibles:`n"
+
+    for ($i = 0; $i -lt $tokens.Count; $i++) {
+        Write-Host "$($i+1)) $($tokens[$i].name)" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    $sel = Read-Host "Seleccione números (ej: 1,3,5)"
+
+    foreach ($n in ($sel -split ",")) {
+
+        $idx = [int]$n - 1
+
+        if ($idx -ge 0 -and $idx -lt $tokens.Count) {
+
+            $file = $tokens[$idx]
+            $destFile = "$Destino\$($file.name)"
+
+            Write-Host "Instalando $($file.name)..."
+
+            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+        }
+    }
+
+    Write-Host ""
+    Write-Host "✅ Tokens instalados correctamente" -ForegroundColor Green
 
     ReiniciarSteam
     Pause
@@ -265,6 +298,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
