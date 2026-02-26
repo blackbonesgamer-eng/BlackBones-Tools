@@ -28,7 +28,7 @@ foreach ($line in $logo.Split("`n")) {
 }
 
 Write-Host ""
-Write-Host "🔥 BLACKBONES STORE TOOL 🔥" -ForegroundColor Cyan
+Write-Host "🔥 BLACKBONES TOOLS 🔥" -ForegroundColor Cyan
 Write-Host ""
 }
 
@@ -378,6 +378,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
