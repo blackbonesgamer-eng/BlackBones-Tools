@@ -273,35 +273,37 @@ function InstalarComplementos {
 
     function DescargarContenido($url, $destino) {
 
-        $items = @(Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" })
+    $items = @(Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" })
 
-        foreach ($item in $items) {
+    foreach ($item in $items) {
 
-            $rutaDestino = Join-Path $destino $item.name
+        if ($item.type -eq "dir") {
 
-            if ($item.type -eq "dir") {
+            $nuevoDestino = Join-Path $destino $item.name
 
-                if (!(Test-Path $rutaDestino)) {
-                    New-Item -ItemType Directory -Path $rutaDestino -Force | Out-Null
-                }
-
-                DescargarContenido $item.url $rutaDestino
+            if (!(Test-Path $nuevoDestino)) {
+                New-Item -ItemType Directory -Path $nuevoDestino -Force | Out-Null
             }
-            else {
 
-                Write-Host "Descargando $($item.name)..."
+            DescargarContenido $item.url $nuevoDestino
+        }
+        elseif ($item.type -eq "file") {
 
-                try {
-                    Invoke-WebRequest -Uri $item.download_url `
-                                      -OutFile $rutaDestino `
-                                      -UseBasicParsing
-                }
-                catch {
-                    Write-Host "Error descargando $($item.name)" -ForegroundColor Red
-                }
+            $destFile = Join-Path $destino $item.name
+
+            Write-Host "Descargando $($item.name)..." -ForegroundColor Yellow
+
+            try {
+                Invoke-WebRequest -Uri $item.download_url `
+                                  -OutFile $destFile `
+                                  -UseBasicParsing
+            }
+            catch {
+                Write-Host "Error descargando $($item.name)" -ForegroundColor Red
             }
         }
     }
+}
 
     # EJECUTAR DESCARGA
     DescargarContenido $mod.url $GamePath
@@ -344,6 +346,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
