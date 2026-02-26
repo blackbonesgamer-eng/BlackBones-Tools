@@ -159,27 +159,11 @@ function InstalarComplementos {
     Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
-    Add-Type -AssemblyName System.Windows.Forms
-
-    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folderBrowser.Description = "Seleccione la carpeta del juego"
-
-    if ($folderBrowser.ShowDialog() -ne "OK") {
-        Write-Host "Cancelado."
-        Pause
-        return
-    }
-
-    $GamePath = $folderBrowser.SelectedPath
-
-    Write-Host "Carpeta seleccionada:"
-    Write-Host $GamePath -ForegroundColor Yellow
-    Write-Host ""
-
+    # URL de la carpeta complementos del repo
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
-        $folders = Invoke-RestMethod $Api
+        $mods = Invoke-RestMethod $Api
     }
     catch {
         Write-Host "❌ Error conectando con el repositorio"
@@ -187,28 +171,94 @@ function InstalarComplementos {
         return
     }
 
-    foreach ($folder in $folders) {
+    # Filtrar solo carpetas (cada carpeta = un mod)
+    $mods = $mods | Where-Object { $_.type -eq "dir" }
 
-        if ($folder.type -ne "dir") { continue }
+    if ($mods.Count -eq 0) {
+        Write-Host "❌ No hay complementos disponibles"
+        Pause
+        return
+    }
 
-        Write-Host "Procesando complemento: $($folder.name)"
+    Write-Host "Mods disponibles:"
+    Write-Host ""
 
-        $files = Invoke-RestMethod $folder.url
+    for ($i = 0; $i -lt $mods.Count; $i++) {
+        Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
+    }
 
-        foreach ($file in $files) {
+    Write-Host ""
+    $sel = Read-Host "Seleccione número"
 
-            if ($file.type -ne "file") { continue }
+    if (-not ($sel -match '^\d+$')) {
+        Write-Host "Selección inválida"
+        Pause
+        return
+    }
 
-            $destFile = Join-Path $GamePath $file.name
+    $index = [int]$sel - 1
 
-            Write-Host "Descargando $($file.name)..."
+    if ($index -lt 0 -or $index -ge $mods.Count) {
+        Write-Host "Número fuera de rango"
+        Pause
+        return
+    }
 
+    $mod = $mods[$index]
+
+    # =============================
+    # SELECCIONAR CARPETA DEL JUEGO
+    # =============================
+
+    Add-Type -AssemblyName System.Windows.Forms
+
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Seleccione la carpeta del juego"
+
+    if ($folderBrowser.ShowDialog() -ne "OK") {
+        Write-Host "Cancelado"
+        Pause
+        return
+    }
+
+    $GamePath = $folderBrowser.SelectedPath
+
+    Write-Host ""
+    Write-Host "Instalando complemento: $($mod.name)" -ForegroundColor Green
+    Write-Host "Destino: $GamePath"
+    Write-Host ""
+
+    # =============================
+    # DESCARGAR ARCHIVOS DEL MOD
+    # =============================
+
+    try {
+        $files = Invoke-RestMethod $mod.url
+    }
+    catch {
+        Write-Host "❌ Error leyendo archivos del complemento"
+        Pause
+        return
+    }
+
+    foreach ($file in $files) {
+
+        if ($file.type -ne "file") { continue }
+
+        $destFile = Join-Path $GamePath $file.name
+
+        Write-Host "Descargando $($file.name)..."
+
+        try {
             Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+        }
+        catch {
+            Write-Host "Error descargando $($file.name)"
         }
     }
 
     Write-Host ""
-    Write-Host "✅ Complementos instalados correctamente" -ForegroundColor Green
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Cyan
     Pause
 }
 
@@ -245,6 +295,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
