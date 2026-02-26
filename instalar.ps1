@@ -185,7 +185,7 @@ function InstalarComplementos {
         return
     }
 
-    Write-Host "Mods disponibles:`n"
+    Write-Host "Bypass disponibles:`n"
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
         Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
@@ -378,6 +378,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
