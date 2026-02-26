@@ -162,7 +162,6 @@ function InstalarComplementos {
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
-        # FORZAR ARRAY (IMPORTANTE)
         $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
     }
     catch {
@@ -171,11 +170,17 @@ function InstalarComplementos {
         return
     }
 
-    # SOLO CARPETAS = MODS
-    $mods = $items | Where-Object { $_.type -eq "dir" }
+    # Filtrar solo carpetas (mods)
+    $mods = @()
 
-    if (!$mods -or $mods.Count -eq 0) {
-        Write-Host "❌ No se encontraron complementos en el repo"
+    foreach ($item in $items) {
+        if ($item.type -eq "dir") {
+            $mods += $item
+        }
+    }
+
+    if ($mods.Count -eq 0) {
+        Write-Host "❌ No hay complementos disponibles"
         Pause
         return
     }
@@ -244,9 +249,7 @@ function InstalarComplementos {
 
         foreach ($game in $games) {
 
-            $gameName = $game.Name.ToLower()
-
-            if ($gameName -like "*$modName*") {
+            if ($game.Name.ToLower() -like "*$modName*") {
                 $GamePath = $game.FullName
                 break
             }
@@ -265,7 +268,7 @@ function InstalarComplementos {
     Write-Host ""
 
     # =============================
-    # DESCARGA RECURSIVA (SUBCARPETAS)
+    # DESCARGA RECURSIVA CORREGIDA
     # =============================
 
     function DescargarContenido($url, $destino) {
@@ -279,7 +282,7 @@ function InstalarComplementos {
             if ($item.type -eq "dir") {
 
                 if (!(Test-Path $rutaDestino)) {
-                    New-Item -ItemType Directory -Path $rutaDestino | Out-Null
+                    New-Item -ItemType Directory -Path $rutaDestino -Force | Out-Null
                 }
 
                 DescargarContenido $item.url $rutaDestino
@@ -288,11 +291,19 @@ function InstalarComplementos {
 
                 Write-Host "Descargando $($item.name)..."
 
-                Invoke-WebRequest $item.download_url -OutFile $rutaDestino -UseBasicParsing
+                try {
+                    Invoke-WebRequest -Uri $item.download_url `
+                                      -OutFile $rutaDestino `
+                                      -UseBasicParsing
+                }
+                catch {
+                    Write-Host "Error descargando $($item.name)" -ForegroundColor Red
+                }
             }
         }
     }
 
+    # EJECUTAR DESCARGA
     DescargarContenido $mod.url $GamePath
 
     Write-Host ""
@@ -333,6 +344,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
