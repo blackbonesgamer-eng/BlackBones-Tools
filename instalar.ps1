@@ -253,6 +253,7 @@ while ($true) {
     Write-Host "2) Activar Juegos" -ForegroundColor Cyan
     Write-Host "3) Actualizar Plugin" -ForegroundColor Cyan
     Write-Host "4) Reparar" -ForegroundColor Cyan
+    Write-Host "5) Instalar Complementos" -ForegroundColor Cyan
     Write-Host "0) Salir" -ForegroundColor Cyan
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
@@ -265,9 +266,11 @@ while ($true) {
         "2" { ActivarJuegos }
         "3" { InstalarPlugin }
         "4" { InstalarPlugin }
+        "5" { InstalarComplementos }
         "0" { break }
 
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
