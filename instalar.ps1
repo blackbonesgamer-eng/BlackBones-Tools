@@ -159,7 +159,28 @@ function InstalarComplementos {
     Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
-    # URL de la carpeta complementos del repo
+    $SteamPath = ObtenerSteam
+    if (-not $SteamPath) { Pause; return }
+
+    # Obtener librerías Steam
+    $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
+
+    if (!(Test-Path $LibrariesFile)) {
+        Write-Host "❌ No se encontraron bibliotecas Steam"
+        Pause
+        return
+    }
+
+    $content = Get-Content $LibrariesFile
+    $paths = @()
+
+    foreach ($line in $content) {
+        if ($line -match '"path"\s+"(.+)"') {
+            $paths += $matches[1].Replace("\\","\") 
+        }
+    }
+
+    # Leer mods del repo
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
@@ -171,11 +192,10 @@ function InstalarComplementos {
         return
     }
 
-    # Filtrar solo carpetas (cada carpeta = un mod)
     $mods = $mods | Where-Object { $_.type -eq "dir" }
 
     if ($mods.Count -eq 0) {
-        Write-Host "❌ No hay complementos disponibles"
+        Write-Host "No hay complementos disponibles"
         Pause
         return
     }
@@ -205,38 +225,48 @@ function InstalarComplementos {
     }
 
     $mod = $mods[$index]
+    $modName = $mod.name.ToLower()
 
-    # =============================
-    # SELECCIONAR CARPETA DEL JUEGO
-    # =============================
+    Write-Host ""
+    Write-Host "Buscando juego instalado..." -ForegroundColor Cyan
 
-    Add-Type -AssemblyName System.Windows.Forms
+    $GamePath = $null
 
-    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folderBrowser.Description = "Seleccione la carpeta del juego"
+    foreach ($lib in $paths) {
 
-    if ($folderBrowser.ShowDialog() -ne "OK") {
-        Write-Host "Cancelado"
+        $common = "$lib\steamapps\common"
+        if (!(Test-Path $common)) { continue }
+
+        $games = Get-ChildItem $common -Directory
+
+        foreach ($game in $games) {
+
+            $gameName = $game.Name.ToLower()
+
+            if ($gameName -like "*$modName*") {
+                $GamePath = $game.FullName
+                break
+            }
+        }
+
+        if ($GamePath) { break }
+    }
+
+    if (-not $GamePath) {
+        Write-Host "❌ No se encontró el juego instalado"
         Pause
         return
     }
 
-    $GamePath = $folderBrowser.SelectedPath
-
-    Write-Host ""
-    Write-Host "Instalando complemento: $($mod.name)" -ForegroundColor Green
-    Write-Host "Destino: $GamePath"
+    Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
     Write-Host ""
 
-    # =============================
-    # DESCARGAR ARCHIVOS DEL MOD
-    # =============================
-
+    # Descargar archivos del mod
     try {
         $files = Invoke-RestMethod $mod.url
     }
     catch {
-        Write-Host "❌ Error leyendo archivos del complemento"
+        Write-Host "Error leyendo archivos"
         Pause
         return
     }
@@ -249,12 +279,7 @@ function InstalarComplementos {
 
         Write-Host "Descargando $($file.name)..."
 
-        try {
-            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-        }
-        catch {
-            Write-Host "Error descargando $($file.name)"
-        }
+        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
     }
 
     Write-Host ""
@@ -295,6 +320,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
