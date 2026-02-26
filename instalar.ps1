@@ -150,6 +150,96 @@ function ActivarJuegos {
 }
 
 # =============================
+# INSTALAR COMPLEMENTOS
+# =============================
+
+function InstalarComplementos {
+
+    Clear-Host
+    Write-Host "🧩 INSTALACIÓN AUTOMÁTICA DE COMPLEMENTOS" -ForegroundColor Cyan
+    Write-Host ""
+
+    $SteamPath = ObtenerSteam
+    if (-not $SteamPath) { Pause; return }
+
+    $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
+
+    if (!(Test-Path $LibrariesFile)) {
+        Write-Host "❌ No se encontraron bibliotecas de Steam"
+        Pause
+        return
+    }
+
+    # Obtener librerías
+    $content = Get-Content $LibrariesFile
+    $paths = @()
+
+    foreach ($line in $content) {
+        if ($line -match '"path"\s+"(.+)"') {
+            $paths += $matches[1].Replace("\\","\") 
+        }
+    }
+
+    # API repo complementos
+    $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
+
+    try {
+        $repoGames = Invoke-RestMethod $Api
+    }
+    catch {
+        Write-Host "❌ Error conectando con el repositorio"
+        Pause
+        return
+    }
+
+    foreach ($lib in $paths) {
+
+        $common = "$lib\steamapps\common"
+        if (!(Test-Path $common)) { continue }
+
+        $installedGames = Get-ChildItem $common -Directory
+
+        foreach ($game in $installedGames) {
+
+            $gameName = $game.Name.ToLower()
+
+            foreach ($repoGame in $repoGames) {
+
+                $repoName = $repoGame.name.ToLower()
+
+                if ($gameName -like "*$repoName*") {
+
+                    Write-Host "🎮 Detectado: $($game.Name)" -ForegroundColor Green
+
+                    try {
+                        $files = Invoke-RestMethod $repoGame.url
+                    }
+                    catch {
+                        Write-Host "Error leyendo archivos del repo"
+                        continue
+                    }
+
+                    foreach ($file in $files) {
+
+                        $destFile = Join-Path $game.FullName $file.name
+
+                        Write-Host "Descargando $($file.name)..."
+
+                        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+                    }
+
+                    Write-Host "✅ Complementos instalados en $($game.Name)" -ForegroundColor Cyan
+                }
+            }
+        }
+    }
+
+    Write-Host ""
+    Write-Host "✔ Proceso completado" -ForegroundColor Green
+    Pause
+}
+
+# =============================
 # MENU PRINCIPAL
 # =============================
 
@@ -180,3 +270,4 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
