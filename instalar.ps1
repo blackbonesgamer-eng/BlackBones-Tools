@@ -1,7 +1,8 @@
 Clear-Host
+$ErrorActionPreference = "SilentlyContinue"
 
 # =============================
-# LOGO BLACKBONES ANIMADO
+# LOGO BLACKBONES
 # =============================
 
 function LogoPrincipal {
@@ -17,26 +18,24 @@ $logo = @"
 
 foreach ($line in $logo.Split("`n")) {
     Write-Host $line -ForegroundColor Magenta
-    Start-Sleep -Milliseconds 80
+    Start-Sleep -Milliseconds 60
 }
 
 Write-Host ""
 Write-Host "🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
 Write-Host ""
-
-Start-Sleep -Milliseconds 500
+Start-Sleep -Milliseconds 400
 }
 
 # =============================
-# SPINNER NEON
+# SPINNER
 # =============================
 
-function Spinner($texto, $loops=25) {
+function Spinner($texto) {
 
     $chars = @("|","/","-","\")
 
-    for ($i=0; $i -lt $loops; $i++) {
-
+    for ($i=0; $i -lt 20; $i++) {
         foreach ($c in $chars) {
             Write-Host "`r$texto $c" -NoNewline -ForegroundColor Cyan
             Start-Sleep -Milliseconds 120
@@ -47,39 +46,18 @@ function Spinner($texto, $loops=25) {
 }
 
 # =============================
-# BARRA PROGRESO REAL
-# =============================
-
-function Progreso($texto) {
-
-    for ($i=0; $i -le 100; $i+=2) {
-
-        Write-Progress -Activity $texto `
-        -Status "$i% Completado" `
-        -PercentComplete $i
-
-        Start-Sleep -Milliseconds 35
-    }
-
-    Write-Progress -Activity $texto -Completed
-}
-
-# =============================
 # DETECTAR STEAM
 # =============================
 
 function ObtenerSteam {
 
-    $SteamPath = (Get-ItemProperty "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue).SteamPath
-
-    if (-not $SteamPath) {
-        Write-Host ""
-        Write-Host "❌ Steam no detectado en el sistema" -ForegroundColor Red
-        Pause
+    try {
+        return (Get-ItemProperty "HKCU:\Software\Valve\Steam").SteamPath
+    }
+    catch {
+        Write-Host "❌ Steam no detectado" -ForegroundColor Red
         return $null
     }
-
-    return $SteamPath
 }
 
 # =============================
@@ -91,17 +69,12 @@ function ReiniciarSteam {
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { return }
 
-    $SteamExe = "$SteamPath\steam.exe"
-
-    Write-Host ""
-    Write-Host "🔄 Reiniciando Steam..." -ForegroundColor Yellow
-
     Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Sleep -Seconds 2
+    Start-Sleep 2
 
-    if (Test-Path $SteamExe) {
-        Start-Process $SteamExe
-        Write-Host "✅ Steam iniciado correctamente" -ForegroundColor Green
+    $exe = "$SteamPath\steam.exe"
+    if (Test-Path $exe) {
+        Start-Process $exe
     }
 }
 
@@ -113,10 +86,8 @@ function InstalarPlugin {
 
     Clear-Host
     Write-Host "⚙ PLUGIN INSTALLER" -ForegroundColor Magenta
-    Write-Host ""
 
-    Spinner "Preparando instalación..."
-    Progreso "Descargando Plugin..."
+    Spinner "Preparando..."
 
     $Temp = "$env:TEMP\BlackBones"
     New-Item -ItemType Directory -Path $Temp -Force | Out-Null
@@ -126,15 +97,14 @@ function InstalarPlugin {
 
     Invoke-WebRequest $URL -OutFile $EXE -UseBasicParsing
 
-    Progreso "Instalando Plugin..."
+    Spinner "Instalando..."
 
     Start-Process $EXE -ArgumentList "/S" -Wait
 
-    Write-Host ""
-    Write-Host "✅ Plugin instalado correctamente" -ForegroundColor Green
+    Write-Host "✅ Plugin instalado" -ForegroundColor Green
 
     ReiniciarSteam
-    Finalizar
+    Pause
 }
 
 # =============================
@@ -145,10 +115,9 @@ function ActivarJuegos {
 
     Clear-Host
     Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
-    Write-Host ""
 
     $SteamPath = ObtenerSteam
-    if (-not $SteamPath) { return }
+    if (-not $SteamPath) { Pause; return }
 
     $Destino = "$SteamPath\config\stplug-in"
     New-Item -ItemType Directory -Path $Destino -Force | Out-Null
@@ -157,14 +126,11 @@ function ActivarJuegos {
     $files = Invoke-RestMethod $Api
     $tokens = $files | Where-Object { $_.name -like "*.lua" }
 
-    Write-Host "Tokens disponibles:" -ForegroundColor Yellow
-    Write-Host ""
-
     for ($i=0; $i -lt $tokens.Count; $i++) {
         Write-Host "$($i+1)) $($tokens[$i].name)"
     }
 
-    $sel = Read-Host "`nSeleccione números (ej: 1,2)"
+    $sel = Read-Host "Seleccione números"
 
     foreach ($n in ($sel -split ",")) {
 
@@ -174,32 +140,12 @@ function ActivarJuegos {
             $file = $tokens[$idx]
             $destFile = "$Destino\$($file.name)"
 
-            Spinner "Instalando $($file.name)..."
-            Progreso "Copiando archivos..."
-
             Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-
-            Write-Host "✅ $($file.name) instalado"
+            Write-Host "Instalado $($file.name)"
         }
     }
 
     ReiniciarSteam
-    Finalizar
-}
-
-# =============================
-# FINAL
-# =============================
-
-function Finalizar {
-
-    [console]::beep(900,200)
-    [console]::beep(1200,200)
-
-    Write-Host ""
-    Write-Host "🔥 PROCESO COMPLETADO 🔥" -ForegroundColor Magenta
-    Write-Host ""
-
     Pause
 }
 
@@ -211,6 +157,7 @@ LogoPrincipal
 
 while ($true) {
 
+    Write-Host ""
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host "1) Instalar Plugin" -ForegroundColor Cyan
     Write-Host "2) Activar Juegos" -ForegroundColor Cyan
