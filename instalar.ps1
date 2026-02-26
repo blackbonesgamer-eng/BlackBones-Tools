@@ -156,35 +156,30 @@ function ActivarJuegos {
 function InstalarComplementos {
 
     Clear-Host
-    Write-Host "🧩 INSTALACIÓN AUTOMÁTICA DE COMPLEMENTOS" -ForegroundColor Cyan
+    Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
-    $SteamPath = ObtenerSteam
-    if (-not $SteamPath) { Pause; return }
+    Add-Type -AssemblyName System.Windows.Forms
 
-    $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Seleccione la carpeta del juego"
 
-    if (!(Test-Path $LibrariesFile)) {
-        Write-Host "❌ No se encontraron bibliotecas de Steam"
+    if ($folderBrowser.ShowDialog() -ne "OK") {
+        Write-Host "Cancelado."
         Pause
         return
     }
 
-    # Obtener librerías
-    $content = Get-Content $LibrariesFile
-    $paths = @()
+    $GamePath = $folderBrowser.SelectedPath
 
-    foreach ($line in $content) {
-        if ($line -match '"path"\s+"(.+)"') {
-            $paths += $matches[1].Replace("\\","\") 
-        }
-    }
+    Write-Host "Carpeta seleccionada:"
+    Write-Host $GamePath -ForegroundColor Yellow
+    Write-Host ""
 
-    # API repo complementos
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
-        $repoGames = Invoke-RestMethod $Api
+        $folders = Invoke-RestMethod $Api
     }
     catch {
         Write-Host "❌ Error conectando con el repositorio"
@@ -192,50 +187,28 @@ function InstalarComplementos {
         return
     }
 
-    foreach ($lib in $paths) {
+    foreach ($folder in $folders) {
 
-        $common = "$lib\steamapps\common"
-        if (!(Test-Path $common)) { continue }
+        if ($folder.type -ne "dir") { continue }
 
-        $installedGames = Get-ChildItem $common -Directory
+        Write-Host "Procesando complemento: $($folder.name)"
 
-        foreach ($game in $installedGames) {
+        $files = Invoke-RestMethod $folder.url
 
-            $gameName = $game.Name.ToLower()
+        foreach ($file in $files) {
 
-            foreach ($repoGame in $repoGames) {
+            if ($file.type -ne "file") { continue }
 
-                $repoName = $repoGame.name.ToLower()
+            $destFile = Join-Path $GamePath $file.name
 
-                if ($gameName -like "*$repoName*") {
+            Write-Host "Descargando $($file.name)..."
 
-                    Write-Host "🎮 Detectado: $($game.Name)" -ForegroundColor Green
-
-                    try {
-                        $files = Invoke-RestMethod $repoGame.url
-                    }
-                    catch {
-                        Write-Host "Error leyendo archivos del repo"
-                        continue
-                    }
-
-                    foreach ($file in $files) {
-
-                        $destFile = Join-Path $game.FullName $file.name
-
-                        Write-Host "Descargando $($file.name)..."
-
-                        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-                    }
-
-                    Write-Host "✅ Complementos instalados en $($game.Name)" -ForegroundColor Cyan
-                }
-            }
+            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
         }
     }
 
     Write-Host ""
-    Write-Host "✔ Proceso completado" -ForegroundColor Green
+    Write-Host "✅ Complementos instalados correctamente" -ForegroundColor Green
     Pause
 }
 
@@ -272,5 +245,6 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
