@@ -159,32 +159,10 @@ function InstalarComplementos {
     Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
-    $SteamPath = ObtenerSteam
-    if (-not $SteamPath) { Pause; return }
-
-    # Obtener librerías Steam
-    $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
-
-    if (!(Test-Path $LibrariesFile)) {
-        Write-Host "❌ No se encontraron bibliotecas Steam"
-        Pause
-        return
-    }
-
-    $content = Get-Content $LibrariesFile
-    $paths = @()
-
-    foreach ($line in $content) {
-        if ($line -match '"path"\s+"(.+)"') {
-            $paths += $matches[1].Replace("\\","\") 
-        }
-    }
-
-    # Leer mods del repo
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
 
     try {
-        $mods = Invoke-RestMethod $Api
+        $mods = Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" }
     }
     catch {
         Write-Host "❌ Error conectando con el repositorio"
@@ -194,43 +172,40 @@ function InstalarComplementos {
 
     $mods = $mods | Where-Object { $_.type -eq "dir" }
 
-    if ($mods.Count -eq 0) {
-        Write-Host "No hay complementos disponibles"
+    if (!$mods) {
+        Write-Host "❌ No hay complementos disponibles"
         Pause
         return
     }
 
-    Write-Host "Mods disponibles:"
-    Write-Host ""
+    Write-Host "Mods disponibles:`n"
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
         Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
     }
 
-    Write-Host ""
-    $sel = Read-Host "Seleccione número"
+    $sel = Read-Host "`nSeleccione número"
 
-    if (-not ($sel -match '^\d+$')) {
-        Write-Host "Selección inválida"
-        Pause
-        return
+    if (-not ($sel -match '^\d+$')) { return }
+
+    $mod = $mods[[int]$sel - 1]
+
+    # Detectar Steam
+    $SteamPath = ObtenerSteam
+    if (-not $SteamPath) { return }
+
+    $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
+    $content = Get-Content $LibrariesFile
+
+    $paths = @()
+    foreach ($line in $content) {
+        if ($line -match '"path"\s+"(.+)"') {
+            $paths += $matches[1].Replace("\\","\")
+        }
     }
-
-    $index = [int]$sel - 1
-
-    if ($index -lt 0 -or $index -ge $mods.Count) {
-        Write-Host "Número fuera de rango"
-        Pause
-        return
-    }
-
-    $mod = $mods[$index]
-    $modName = $mod.name.ToLower()
-
-    Write-Host ""
-    Write-Host "Buscando juego instalado..." -ForegroundColor Cyan
 
     $GamePath = $null
+    $modName = $mod.name.ToLower()
 
     foreach ($lib in $paths) {
 
@@ -240,10 +215,7 @@ function InstalarComplementos {
         $games = Get-ChildItem $common -Directory
 
         foreach ($game in $games) {
-
-            $gameName = $game.Name.ToLower()
-
-            if ($gameName -like "*$modName*") {
+            if ($game.Name.ToLower() -like "*$modName*") {
                 $GamePath = $game.FullName
                 break
             }
@@ -253,37 +225,44 @@ function InstalarComplementos {
     }
 
     if (-not $GamePath) {
-        Write-Host "❌ No se encontró el juego instalado"
+        Write-Host "❌ Juego no encontrado"
         Pause
         return
     }
 
-    Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
-    Write-Host ""
+    Write-Host "Juego detectado: $GamePath" -ForegroundColor Green
 
-    # Descargar archivos del mod
-    try {
-        $files = Invoke-RestMethod $mod.url
+    # =============================
+    # DESCARGA RECURSIVA
+    # =============================
+
+    function DescargarContenido($url, $destino) {
+
+        $items = Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" }
+
+        foreach ($item in $items) {
+
+            $rutaDestino = Join-Path $destino $item.name
+
+            if ($item.type -eq "dir") {
+
+                if (!(Test-Path $rutaDestino)) {
+                    New-Item -ItemType Directory -Path $rutaDestino | Out-Null
+                }
+
+                DescargarContenido $item.url $rutaDestino
+            }
+            else {
+
+                Write-Host "Descargando $($item.name)..."
+                Invoke-WebRequest $item.download_url -OutFile $rutaDestino -UseBasicParsing
+            }
+        }
     }
-    catch {
-        Write-Host "Error leyendo archivos"
-        Pause
-        return
-    }
 
-    foreach ($file in $files) {
+    DescargarContenido $mod.url $GamePath
 
-        if ($file.type -ne "file") { continue }
-
-        $destFile = Join-Path $GamePath $file.name
-
-        Write-Host "Descargando $($file.name)..."
-
-        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-    }
-
-    Write-Host ""
-    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Cyan
+    Write-Host "`n✅ Complemento instalado correctamente" -ForegroundColor Cyan
     Pause
 }
 
@@ -320,6 +299,7 @@ while ($true) {
         default { Write-Host "Opción inválida" -ForegroundColor Red }
     }
 }
+
 
 
 
