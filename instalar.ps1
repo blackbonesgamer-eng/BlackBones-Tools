@@ -21,20 +21,20 @@ foreach ($line in $logo.Split("`n")) {
 }
 
 Write-Host ""
-Write-Host "            🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
+Write-Host "🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
 Write-Host ""
 
-Start-Sleep 500
+Start-Sleep -Milliseconds 500
 }
 
 # =============================
 # SPINNER NEON
 # =============================
 
-function Spinner($texto, $loops=30) {
+function Spinner($texto, $loops=25) {
 
     $chars = @("|","/","-","\")
-    
+
     for ($i=0; $i -lt $loops; $i++) {
 
         foreach ($c in $chars) {
@@ -58,7 +58,7 @@ function Progreso($texto) {
         -Status "$i% Completado" `
         -PercentComplete $i
 
-        Start-Sleep -Milliseconds 40
+        Start-Sleep -Milliseconds 35
     }
 
     Write-Progress -Activity $texto -Completed
@@ -97,7 +97,7 @@ function ReiniciarSteam {
     Write-Host "🔄 Reiniciando Steam..." -ForegroundColor Yellow
 
     Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Sleep 2
+    Start-Sleep -Seconds 2
 
     if (Test-Path $SteamExe) {
         Start-Process $SteamExe
@@ -112,7 +112,6 @@ function ReiniciarSteam {
 function InstalarPlugin {
 
     Clear-Host
-
     Write-Host "⚙ PLUGIN INSTALLER" -ForegroundColor Magenta
     Write-Host ""
 
@@ -145,7 +144,6 @@ function InstalarPlugin {
 function ActivarJuegos {
 
     Clear-Host
-
     Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
     Write-Host ""
 
@@ -166,7 +164,7 @@ function ActivarJuegos {
         Write-Host "$($i+1)) $($tokens[$i].name)"
     }
 
-    $sel = Read-Host "`nSeleccione números"
+    $sel = Read-Host "`nSeleccione números (ej: 1,2)"
 
     foreach ($n in ($sel -split ",")) {
 
