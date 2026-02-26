@@ -2,47 +2,27 @@ Clear-Host
 $ErrorActionPreference = "SilentlyContinue"
 
 # =============================
-# LOGO BLACKBONES
+# LOGO
 # =============================
 
 function LogoPrincipal {
 
 $logo = @"
-██████╗ ██╗      █████╗  ██████╗██╗  ██╗██████╗  ██████╗ ███╗   ██╗███████╗███████╗
-██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔══██╗██╔═══██╗████╗  ██║██╔════╝██╔════╝
-██████╔╝██║     ███████║██║     █████╔╝ ██████╔╝██║   ██║██╔██╗ ██║█████╗  ███████╗
-██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██╔══██╗██║   ██║██║╚██╗██║██╔══╝  ╚════██║
-██████╔╝███████╗██║  ██║╚██████╗██║  ██╗██████╔╝╚██████╔╝██║ ╚████║███████╗███████║
-╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝
+██████╗ ██╗      █████╗  ██████╗██╗  ██╗██████╗
+██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝██╔══██╗
+██████╔╝██║     ███████║██║     █████╔╝ ██████╔╝
+██╔══██╗██║     ██╔══██║██║     ██╔═██╗ ██╔══██╗
+██████╔╝███████╗██║  ██║╚██████╗██║  ██╗██████╔╝
+╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝
 "@
 
 foreach ($line in $logo.Split("`n")) {
     Write-Host $line -ForegroundColor Magenta
-    Start-Sleep -Milliseconds 60
 }
 
 Write-Host ""
-Write-Host "🔥 BLACKBONES PLUGIN MANAGER 🔥" -ForegroundColor Cyan
+Write-Host "🔥 BLACKBONES TOOL 🔥" -ForegroundColor Cyan
 Write-Host ""
-Start-Sleep -Milliseconds 400
-}
-
-# =============================
-# SPINNER
-# =============================
-
-function Spinner($texto) {
-
-    $chars = @("|","/","-","\")
-
-    for ($i=0; $i -lt 20; $i++) {
-        foreach ($c in $chars) {
-            Write-Host "`r$texto $c" -NoNewline -ForegroundColor Cyan
-            Start-Sleep -Milliseconds 120
-        }
-    }
-
-    Write-Host "`r$texto ✔" -ForegroundColor Green
 }
 
 # =============================
@@ -85,9 +65,7 @@ function ReiniciarSteam {
 function InstalarPlugin {
 
     Clear-Host
-    Write-Host "⚙ PLUGIN INSTALLER" -ForegroundColor Magenta
-
-    Spinner "Preparando..."
+    Write-Host "⚙ INSTALANDO PLUGIN..." -ForegroundColor Cyan
 
     $Temp = "$env:TEMP\BlackBones"
     New-Item -ItemType Directory -Path $Temp -Force | Out-Null
@@ -96,8 +74,6 @@ function InstalarPlugin {
     $EXE = "$Temp\plugin.exe"
 
     Invoke-WebRequest $URL -OutFile $EXE -UseBasicParsing
-
-    Spinner "Instalando..."
 
     Start-Process $EXE -ArgumentList "/S" -Wait
 
@@ -108,13 +84,13 @@ function InstalarPlugin {
 }
 
 # =============================
-# ACTIVAR JUEGOS
+# ACTIVAR JUEGOS (TOKENS)
 # =============================
 
 function ActivarJuegos {
 
     Clear-Host
-    Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
+    Write-Host "🎮 ACTIVANDO JUEGOS..." -ForegroundColor Cyan
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
@@ -123,34 +99,25 @@ function ActivarJuegos {
     New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
-    $files = Invoke-RestMethod $Api
+
+    $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
     $tokens = $files | Where-Object { $_.name -like "*.lua" }
 
-    for ($i=0; $i -lt $tokens.Count; $i++) {
-        Write-Host "$($i+1)) $($tokens[$i].name)"
+    foreach ($file in $tokens) {
+
+        $destFile = "$Destino\$($file.name)"
+
+        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
     }
 
-    $sel = Read-Host "Seleccione números"
-
-    foreach ($n in ($sel -split ",")) {
-
-        $idx = [int]$n - 1
-        if ($idx -ge 0 -and $idx -lt $tokens.Count) {
-
-            $file = $tokens[$idx]
-            $destFile = "$Destino\$($file.name)"
-
-            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-            Write-Host "Instalado $($file.name)"
-        }
-    }
+    Write-Host "✅ Juegos activados" -ForegroundColor Green
 
     ReiniciarSteam
     Pause
 }
 
 # =============================
-# INSTALAR COMPLEMENTOS
+# INSTALAR COMPLEMENTOS (ZIP)
 # =============================
 
 function InstalarComplementos {
@@ -170,14 +137,7 @@ function InstalarComplementos {
         return
     }
 
-    # Filtrar solo carpetas (mods)
-    $mods = @()
-
-    foreach ($item in $items) {
-        if ($item.type -eq "dir") {
-            $mods += $item
-        }
-    }
+    $mods = $items | Where-Object { $_.type -eq "dir" }
 
     if ($mods.Count -eq 0) {
         Write-Host "❌ No hay complementos disponibles"
@@ -191,47 +151,24 @@ function InstalarComplementos {
         Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
     }
 
-    Write-Host ""
-    $sel = Read-Host "Seleccione número"
+    $sel = Read-Host "`nSeleccione número"
 
-    if (-not ($sel -match '^\d+$')) {
-        Write-Host "Selección inválida"
-        Pause
-        return
-    }
+    if (-not ($sel -match '^\d+$')) { return }
 
-    $index = [int]$sel - 1
-
-    if ($index -lt 0 -or $index -ge $mods.Count) {
-        Write-Host "Número fuera de rango"
-        Pause
-        return
-    }
-
-    $mod = $mods[$index]
+    $mod = $mods[[int]$sel - 1]
     $modName = $mod.name.ToLower()
 
     Write-Host ""
     Write-Host "Buscando juego instalado..." -ForegroundColor Cyan
 
-    # =============================
-    # DETECTAR STEAM
-    # =============================
-
+    # Detectar Steam
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
 
     $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
-
-    if (!(Test-Path $LibrariesFile)) {
-        Write-Host "❌ No se encontraron bibliotecas Steam"
-        Pause
-        return
-    }
-
     $content = Get-Content $LibrariesFile
-    $paths = @()
 
+    $paths = @()
     foreach ($line in $content) {
         if ($line -match '"path"\s+"(.+)"') {
             $paths += $matches[1].Replace("\\","\")
@@ -248,7 +185,6 @@ function InstalarComplementos {
         $games = Get-ChildItem $common -Directory
 
         foreach ($game in $games) {
-
             if ($game.Name.ToLower() -like "*$modName*") {
                 $GamePath = $game.FullName
                 break
@@ -265,56 +201,43 @@ function InstalarComplementos {
     }
 
     Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
-    Write-Host ""
 
-    # =============================
-    # DESCARGA RECURSIVA CORREGIDA
-    # =============================
+    # Descargar ZIP repo
+    $tempZip = "$env:TEMP\bb_repo.zip"
+    $tempExtract = "$env:TEMP\bb_repo"
 
-    function DescargarContenido($url, $destino) {
+    $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
 
-    $items = @(Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "PowerShell" })
+    Write-Host "Descargando archivos del repositorio..." -ForegroundColor Yellow
 
-    foreach ($item in $items) {
+    Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
 
-        if ($item.type -eq "dir") {
-
-            $nuevoDestino = Join-Path $destino $item.name
-
-            if (!(Test-Path $nuevoDestino)) {
-                New-Item -ItemType Directory -Path $nuevoDestino -Force | Out-Null
-            }
-
-            DescargarContenido $item.url $nuevoDestino
-        }
-        elseif ($item.type -eq "file") {
-
-            $destFile = Join-Path $destino $item.name
-
-            Write-Host "Descargando $($item.name)..." -ForegroundColor Yellow
-
-            try {
-                Invoke-WebRequest -Uri $item.download_url `
-                                  -OutFile $destFile `
-                                  -UseBasicParsing
-            }
-            catch {
-                Write-Host "Error descargando $($item.name)" -ForegroundColor Red
-            }
-        }
+    if (Test-Path $tempExtract) {
+        Remove-Item $tempExtract -Recurse -Force
     }
-}
 
-    # EJECUTAR DESCARGA
-    DescargarContenido $mod.url $GamePath
+    Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+
+    $repoFolder = Get-ChildItem $tempExtract | Select-Object -First 1
+    $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
+
+    if (!(Test-Path $modSource)) {
+        Write-Host "❌ No se encontró el mod dentro del repositorio"
+        Pause
+        return
+    }
+
+    Write-Host "Copiando archivos al juego..." -ForegroundColor Cyan
+
+    Copy-Item "$modSource\*" $GamePath -Recurse -Force
 
     Write-Host ""
-    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Cyan
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
 
 # =============================
-# MENU PRINCIPAL
+# MENU
 # =============================
 
 LogoPrincipal
@@ -323,12 +246,10 @@ while ($true) {
 
     Write-Host ""
     Write-Host "==================================" -ForegroundColor Magenta
-    Write-Host "1) Instalar Plugin" -ForegroundColor Cyan
-    Write-Host "2) Activar Juegos" -ForegroundColor Cyan
-    Write-Host "3) Actualizar Plugin" -ForegroundColor Cyan
-    Write-Host "4) Reparar" -ForegroundColor Cyan
-    Write-Host "5) Instalar Complementos" -ForegroundColor Cyan
-    Write-Host "0) Salir" -ForegroundColor Cyan
+    Write-Host "1) Instalar Plugin"
+    Write-Host "2) Activar Juegos"
+    Write-Host "3) Instalar Complementos"
+    Write-Host "0) Salir"
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
 
@@ -338,15 +259,12 @@ while ($true) {
 
         "1" { InstalarPlugin }
         "2" { ActivarJuegos }
-        "3" { InstalarPlugin }
-        "4" { InstalarPlugin }
-        "5" { InstalarComplementos }
+        "3" { InstalarComplementos }
         "0" { break }
 
-        default { Write-Host "Opción inválida" -ForegroundColor Red }
+        default { Write-Host "Opción inválida" }
     }
 }
-
 
 
 
