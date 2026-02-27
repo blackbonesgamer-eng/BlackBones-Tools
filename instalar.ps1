@@ -234,7 +234,7 @@ function EliminarTokens {
 function InstalarComplementos {
 
     Clear-Host
-    Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
+    Write-Host "🧩 BYPASS DISPONIBLES" -ForegroundColor Cyan
     Write-Host ""
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
@@ -342,6 +342,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
