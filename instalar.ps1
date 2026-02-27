@@ -323,7 +323,7 @@ while ($true) {
     Write-Host "2) Actualizar Plugin"
     Write-Host "3) Activar Juegos"
     Write-Host "4) Eliminar Tokens"
-    Write-Host "5) Instalar Complementos"
+    Write-Host "5) Instalar Bypass"
     Write-Host "0) Salir"
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
