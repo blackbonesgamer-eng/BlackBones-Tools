@@ -113,14 +113,16 @@ function InstalarPlugin {
     $EXE = "$Temp\plugin.exe"
 
     Invoke-WebRequest $URL -OutFile $EXE -UseBasicParsing
-
     Start-Process $EXE -ArgumentList "/S" -Wait
 
     Write-Host "✅ Plugin instalado" -ForegroundColor Green
 
-    # Eliminar accesos directos
+    # 🔥 ELIMINAR SOLO ACCESOS DEL PLUGIN (SEGURO)
     $desktop = [Environment]::GetFolderPath("Desktop")
-    Remove-Item "$desktop\*.lnk" -Force -ErrorAction SilentlyContinue
+
+    Get-ChildItem $desktop -Filter "*.lnk" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match "stplug|steamtool|blackbones" } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
 
     EjecutarPluginAuto
     ReiniciarSteam
@@ -152,8 +154,8 @@ function ActivarJuegos {
     New-Item -ItemType Directory -Path $Destino -Force | Out-Null
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
-
     $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
+
     $tokens = $files | Where-Object { $_.name -like "*.lua" }
 
     for ($i = 0; $i -lt $tokens.Count; $i++) {
@@ -197,7 +199,6 @@ function EliminarTokens {
     if (-not $SteamPath) { Pause; return }
 
     $Destino = "$SteamPath\config\stplug-in"
-
     $files = Get-ChildItem $Destino -Filter *.lua
 
     for ($i = 0; $i -lt $files.Count; $i++) {
@@ -237,8 +238,8 @@ function InstalarComplementos {
     Write-Host ""
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
-
     $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
+
     $mods = $items | Where-Object { $_.type -eq "dir" }
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
@@ -289,7 +290,6 @@ function InstalarComplementos {
 
     $tempZip = "$env:TEMP\bb_repo.zip"
     $tempExtract = "$env:TEMP\bb_repo"
-
     $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
 
     Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
@@ -342,7 +342,6 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
-
 
 
 
