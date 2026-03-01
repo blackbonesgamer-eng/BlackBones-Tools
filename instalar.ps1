@@ -234,13 +234,14 @@ function EliminarTokens {
 function InstalarComplementos {
 
     Clear-Host
-    Write-Host "🧩 BYPASS DISPONIBLES" -ForegroundColor Cyan
+    Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
     $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
 
-    $mods = $items | Where-Object { $_.type -eq "dir" }
+    # Mods = carpetas + zip
+    $mods = $items | Where-Object { $_.type -eq "dir" -or $_.name -like "*.zip" }
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
         Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
@@ -248,7 +249,12 @@ function InstalarComplementos {
 
     $sel = Read-Host "Seleccione número"
     $mod = $mods[[int]$sel - 1]
-    $modName = $mod.name.ToLower()
+
+    $modName = $mod.name.Replace(".zip","").ToLower()
+
+    # =============================
+    # DETECTAR JUEGO
+    # =============================
 
     $SteamPath = ObtenerSteam
     $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
@@ -288,22 +294,55 @@ function InstalarComplementos {
 
     Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
 
-    $tempZip = "$env:TEMP\bb_repo.zip"
-    $tempExtract = "$env:TEMP\bb_repo"
-    $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
+    $temp = "$env:TEMP\bb_mod"
+    if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
+    New-Item -ItemType Directory -Path $temp | Out-Null
 
-    Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+    # =============================
+    # SI ES ZIP
+    # =============================
 
-    if (Test-Path $tempExtract) {
-        Remove-Item $tempExtract -Recurse -Force
+    if ($mod.name -like "*.zip") {
+
+        $zipFile = "$temp\mod.zip"
+
+        Write-Host "Descargando mod ZIP..." -ForegroundColor Cyan
+        Invoke-WebRequest $mod.download_url -OutFile $zipFile -UseBasicParsing
+
+        Write-Host "Extrayendo..." -ForegroundColor Cyan
+        Expand-Archive $zipFile -DestinationPath $temp -Force
+
+        $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+
+        if ($source) {
+            Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
+        }
+
     }
+    else {
 
-    Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        # =============================
+        # SI ES CARPETA NORMAL
+        # =============================
 
-    $repoFolder = Get-ChildItem $tempExtract | Select-Object -First 1
-    $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
+        $tempZip = "$env:TEMP\bb_repo.zip"
+        $tempExtract = "$env:TEMP\bb_repo"
 
-    Copy-Item "$modSource\*" $GamePath -Recurse -Force
+        $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
+
+        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+
+        if (Test-Path $tempExtract) {
+            Remove-Item $tempExtract -Recurse -Force
+        }
+
+        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+
+        $repoFolder = Get-ChildItem $tempExtract | Select-Object -First 1
+        $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
+
+        Copy-Item "$modSource\*" $GamePath -Recurse -Force
+    }
 
     Write-Host "✅ Complemento instalado correctamente"
     Pause
@@ -342,6 +381,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
