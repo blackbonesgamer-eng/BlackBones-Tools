@@ -63,6 +63,42 @@ function ReiniciarSteam {
     }
 }
 
+function DescargarArchivo($url, $destino) {
+
+    $request = [System.Net.HttpWebRequest]::Create($url)
+    $response = $request.GetResponse()
+
+    $total = $response.ContentLength
+    $stream = $response.GetResponseStream()
+
+    $file = [System.IO.File]::Create($destino)
+
+    $buffer = New-Object byte[] 8192
+    $totalRead = 0
+
+    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+
+        $file.Write($buffer, 0, $read)
+        $totalRead += $read
+
+        if ($total -gt 0) {
+
+            $percent = [math]::Round(($totalRead / $total) * 100)
+
+            $bars = [math]::Floor($percent / 4)
+            $line = "[" + ("█" * $bars) + ("░" * (25 - $bars)) + "]"
+
+            Write-Host "`rDescargando $line $percent%" -NoNewline -ForegroundColor Cyan
+        }
+    }
+
+    $file.Close()
+    $stream.Close()
+    $response.Close()
+
+    Write-Host ""
+}
+
 # =============================
 # EJECUTAR PLUGIN OCULTO
 # =============================
@@ -381,6 +417,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
