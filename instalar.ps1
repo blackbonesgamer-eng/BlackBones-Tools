@@ -63,6 +63,41 @@ function ReiniciarSteam {
     }
 }
 
+function DescargarArchivo($url, $destino) {
+
+    $request = [System.Net.HttpWebRequest]::Create($url)
+    $response = $request.GetResponse()
+
+    $total = $response.ContentLength
+    $stream = $response.GetResponseStream()
+
+    $file = [System.IO.File]::Create($destino)
+
+    $buffer = New-Object byte[] 8192
+    $totalRead = 0
+
+    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+
+        $file.Write($buffer, 0, $read)
+        $totalRead += $read
+
+        if ($total -gt 0) {
+
+            $percent = [math]::Round(($totalRead / $total) * 100)
+            $bars = [math]::Floor($percent / 4)
+            $line = "[" + ("█" * $bars) + ("░" * (25 - $bars)) + "]"
+
+            Write-Host "`rDescargando $line $percent%" -NoNewline -ForegroundColor Cyan
+        }
+    }
+
+    $file.Close()
+    $stream.Close()
+    $response.Close()
+
+    Write-Host ""
+}
+
 # =============================
 # EJECUTAR PLUGIN OCULTO
 # =============================
@@ -243,12 +278,17 @@ function InstalarComplementos {
     $mods = $items | Where-Object { $_.type -eq "dir" }
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
-        Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
+        Write-Host "$($i+1)) $($mods[$i].name)"
     }
 
     $sel = Read-Host "Seleccione número"
     $mod = $mods[[int]$sel - 1]
+
     $modName = $mod.name.ToLower()
+
+    # =============================
+    # DETECTAR JUEGO
+    # =============================
 
     $SteamPath = ObtenerSteam
     $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
@@ -288,24 +328,53 @@ function InstalarComplementos {
 
     Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
 
-    $tempZip = "$env:TEMP\bb_repo.zip"
-    $tempExtract = "$env:TEMP\bb_repo"
+    # =============================
+    # DESCARGAR REPO COMPLETO
+    # =============================
+
+    $repoZip = "$env:TEMP\bb_repo.zip"
+    $repoExtract = "$env:TEMP\bb_repo"
+    $extractTemp = "$env:TEMP\bb_extract"
+
+    if (Test-Path $repoExtract) { Remove-Item $repoExtract -Recurse -Force }
+    if (Test-Path $extractTemp) { Remove-Item $extractTemp -Recurse -Force }
+
     $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
 
-    Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+    Write-Host "Descargando archivos..." -ForegroundColor Cyan
+    DescargarArchivo $zipUrl $repoZip
 
-    if (Test-Path $tempExtract) {
-        Remove-Item $tempExtract -Recurse -Force
-    }
+    Expand-Archive $repoZip -DestinationPath $repoExtract -Force
 
-    Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
-
-    $repoFolder = Get-ChildItem $tempExtract | Select-Object -First 1
+    $repoFolder = Get-ChildItem $repoExtract | Select-Object -First 1
     $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
 
-    Copy-Item "$modSource\*" $GamePath -Recurse -Force
+    # =============================
+    # SI HAY ZIP → EXTRAER
+    # =============================
 
-    Write-Host "✅ Complemento instalado correctamente"
+    $zipInside = Get-ChildItem $modSource -Filter *.zip -Recurse | Select-Object -First 1
+
+    if ($zipInside) {
+
+        Write-Host "Extrayendo mod..." -ForegroundColor Cyan
+
+        New-Item -ItemType Directory -Path $extractTemp | Out-Null
+
+        Expand-Archive -Path $zipInside.FullName -DestinationPath $extractTemp -Force
+
+        $files = Get-ChildItem $extractTemp
+
+        foreach ($item in $files) {
+            Copy-Item $item.FullName $GamePath -Recurse -Force
+        }
+    }
+    else {
+
+        Copy-Item "$modSource\*" $GamePath -Recurse -Force
+    }
+
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
 
@@ -342,6 +411,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
