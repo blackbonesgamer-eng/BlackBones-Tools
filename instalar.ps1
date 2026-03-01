@@ -260,7 +260,10 @@ function InstalarComplementos {
 
     $modName = $mod.name.Replace(".zip","").ToLower()
 
-    # detectar juego
+    # =============================
+    # DETECTAR JUEGO
+    # =============================
+
     $SteamPath = ObtenerSteam
     $LibrariesFile = "$SteamPath\steamapps\libraryfolders.vdf"
     $content = Get-Content $LibrariesFile
@@ -303,7 +306,10 @@ function InstalarComplementos {
     if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
     New-Item -ItemType Directory -Path $temp | Out-Null
 
-    # ZIP directo
+    # =============================
+    # SI ES ZIP DIRECTO
+    # =============================
+
     if ($mod.name -like "*.zip") {
 
         $zipFile = "$temp\mod.zip"
@@ -315,7 +321,30 @@ function InstalarComplementos {
         Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
     }
 
-    Write-Host "✅ Complemento instalado correctamente"
+    # =============================
+    # SI ES CARPETA CON ZIP DENTRO
+    # =============================
+
+    if ($mod.type -eq "dir") {
+
+        $folderApi = $mod.url
+        $folderItems = @(Invoke-RestMethod -Uri $folderApi -Headers @{ "User-Agent" = "PowerShell" })
+
+        $zipInside = $folderItems | Where-Object { $_.name -like "*.zip" }
+
+        if ($zipInside) {
+
+            $zipFile = "$temp\mod.zip"
+            DescargarArchivo $zipInside[0].download_url $zipFile
+
+            Expand-Archive $zipFile -DestinationPath $temp -Force
+            $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+
+            Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
+        }
+    }
+
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
 
@@ -350,6 +379,7 @@ while ($true) {
         "0" { break }
     }
 }
+
 
 
 
