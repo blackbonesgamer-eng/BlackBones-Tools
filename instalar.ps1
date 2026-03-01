@@ -303,44 +303,45 @@ function InstalarComplementos {
     Write-Host "🎮 Juego detectado: $GamePath" -ForegroundColor Green
 
     $temp = "$env:TEMP\bb_mod"
+    $repoZip = "$env:TEMP\repo.zip"
+    $repoExtract = "$env:TEMP\repo"
+
     if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
+    if (Test-Path $repoExtract) { Remove-Item $repoExtract -Recurse -Force }
 
     # =============================
-    # CASO ZIP
+    # DESCARGAR REPO COMPLETO (METODO CLAVE)
     # =============================
 
-    if ($mod.name -like "*.zip") {
+    $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
 
-        $zipFile = "$env:TEMP\mod.zip"
-        Write-Host "Descargando ZIP..." -ForegroundColor Cyan
+    Write-Host "Descargando archivos..." -ForegroundColor Cyan
+    DescargarArchivo $zipUrl $repoZip
 
-        DescargarArchivo $mod.download_url $zipFile
+    Expand-Archive $repoZip -DestinationPath $repoExtract -Force
 
-        Expand-Archive $zipFile -DestinationPath $temp -Force
+    $repoFolder = Get-ChildItem $repoExtract | Select-Object -First 1
+    $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
+
+    # =============================
+    # SI HAY ZIP DENTRO → EXTRAER
+    # =============================
+
+    $zipInside = Get-ChildItem $modSource -Filter *.zip -Recurse | Select-Object -First 1
+
+    if ($zipInside) {
+
+        Write-Host "Extrayendo mod..." -ForegroundColor Cyan
+
+        Expand-Archive $zipInside.FullName -DestinationPath $temp -Force
+
         $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
         Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
     }
+    else {
 
-    # =============================
-    # CASO CARPETA (METODO ORIGINAL)
-    # =============================
-
-    if ($mod.type -eq "dir") {
-
-        $repoZip = "$env:TEMP\repo.zip"
-        $repoExtract = "$env:TEMP\repo"
-
-        $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
-
-        Write-Host "Descargando archivos..." -ForegroundColor Cyan
-        DescargarArchivo $zipUrl $repoZip
-
-        Expand-Archive $repoZip -DestinationPath $repoExtract -Force
-
-        $repoFolder = Get-ChildItem $repoExtract | Select-Object -First 1
-        $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
-
+        # copiar normal si no hay zip
         Copy-Item "$modSource\*" $GamePath -Recurse -Force
     }
 
@@ -379,6 +380,7 @@ while ($true) {
         "0" { break }
     }
 }
+
 
 
 
