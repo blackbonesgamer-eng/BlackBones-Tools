@@ -246,6 +246,8 @@ function InstalarComplementos {
     Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
+    $repoBase = "https://raw.githubusercontent.com/blackbonesgamer-eng/BlackBones-Tools/main/complementos"
+
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
     $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
 
@@ -306,43 +308,43 @@ function InstalarComplementos {
     if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
     New-Item -ItemType Directory -Path $temp | Out-Null
 
+    $zipFile = "$temp\mod.zip"
+
     # =============================
-    # SI ES ZIP DIRECTO
+    # DESCARGA ZIP DIRECTA
     # =============================
 
     if ($mod.name -like "*.zip") {
 
-        $zipFile = "$temp\mod.zip"
-        DescargarArchivo $mod.download_url $zipFile
+        $zipUrl = "$repoBase/$($mod.name)"
 
-        Expand-Archive $zipFile -DestinationPath $temp -Force
-        $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
-
-        Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
     }
+    else {
 
-    # =============================
-    # SI ES CARPETA CON ZIP DENTRO
-    # =============================
-
-    if ($mod.type -eq "dir") {
-
+        # buscar zip dentro carpeta
         $folderApi = $mod.url
         $folderItems = @(Invoke-RestMethod -Uri $folderApi -Headers @{ "User-Agent" = "PowerShell" })
 
         $zipInside = $folderItems | Where-Object { $_.name -like "*.zip" }
 
-        if ($zipInside) {
-
-            $zipFile = "$temp\mod.zip"
-            DescargarArchivo $zipInside[0].download_url $zipFile
-
-            Expand-Archive $zipFile -DestinationPath $temp -Force
-            $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
-
-            Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
+        if (-not $zipInside) {
+            Write-Host "❌ No se encontró ZIP"
+            Pause
+            return
         }
+
+        $zipUrl = "$repoBase/$($mod.name)/$($zipInside[0].name)"
     }
+
+    Write-Host "Descargando mod..." -ForegroundColor Cyan
+    DescargarArchivo $zipUrl $zipFile
+
+    Write-Host "Extrayendo..." -ForegroundColor Cyan
+    Expand-Archive $zipFile -DestinationPath $temp -Force
+
+    $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+
+    Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
 
     Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
@@ -379,6 +381,7 @@ while ($true) {
         "0" { break }
     }
 }
+
 
 
 
