@@ -246,8 +246,6 @@ function InstalarComplementos {
     Write-Host "🧩 INSTALACIÓN DE COMPLEMENTOS" -ForegroundColor Cyan
     Write-Host ""
 
-    $repoBase = "https://raw.githubusercontent.com/blackbonesgamer-eng/BlackBones-Tools/main/complementos"
-
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
     $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
 
@@ -306,45 +304,45 @@ function InstalarComplementos {
 
     $temp = "$env:TEMP\bb_mod"
     if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
-    New-Item -ItemType Directory -Path $temp | Out-Null
-
-    $zipFile = "$temp\mod.zip"
 
     # =============================
-    # DESCARGA ZIP DIRECTA
+    # CASO ZIP
     # =============================
 
     if ($mod.name -like "*.zip") {
 
-        $zipUrl = "$repoBase/$($mod.name)"
+        $zipFile = "$env:TEMP\mod.zip"
+        Write-Host "Descargando ZIP..." -ForegroundColor Cyan
 
-    }
-    else {
+        DescargarArchivo $mod.download_url $zipFile
 
-        # buscar zip dentro carpeta
-        $folderApi = $mod.url
-        $folderItems = @(Invoke-RestMethod -Uri $folderApi -Headers @{ "User-Agent" = "PowerShell" })
+        Expand-Archive $zipFile -DestinationPath $temp -Force
+        $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
-        $zipInside = $folderItems | Where-Object { $_.name -like "*.zip" }
-
-        if (-not $zipInside) {
-            Write-Host "❌ No se encontró ZIP"
-            Pause
-            return
-        }
-
-        $zipUrl = "$repoBase/$($mod.name)/$($zipInside[0].name)"
+        Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
     }
 
-    Write-Host "Descargando mod..." -ForegroundColor Cyan
-    DescargarArchivo $zipUrl $zipFile
+    # =============================
+    # CASO CARPETA (METODO ORIGINAL)
+    # =============================
 
-    Write-Host "Extrayendo..." -ForegroundColor Cyan
-    Expand-Archive $zipFile -DestinationPath $temp -Force
+    if ($mod.type -eq "dir") {
 
-    $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+        $repoZip = "$env:TEMP\repo.zip"
+        $repoExtract = "$env:TEMP\repo"
 
-    Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
+        $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
+
+        Write-Host "Descargando archivos..." -ForegroundColor Cyan
+        DescargarArchivo $zipUrl $repoZip
+
+        Expand-Archive $repoZip -DestinationPath $repoExtract -Force
+
+        $repoFolder = Get-ChildItem $repoExtract | Select-Object -First 1
+        $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
+
+        Copy-Item "$modSource\*" $GamePath -Recurse -Force
+    }
 
     Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
@@ -381,6 +379,7 @@ while ($true) {
         "0" { break }
     }
 }
+
 
 
 
