@@ -1,8 +1,9 @@
 Clear-Host
 $ErrorActionPreference = "SilentlyContinue"
+$ProgressPreference = 'SilentlyContinue'
 
 # =============================
-# LOGO BLACKBONES STORE
+# LOGO
 # =============================
 
 function LogoPrincipal {
@@ -33,21 +34,52 @@ Write-Host ""
 }
 
 # =============================
-# DETECTAR STEAM
+# BARRA DESCARGA
 # =============================
 
-function ObtenerSteam {
-    try {
-        return (Get-ItemProperty "HKCU:\Software\Valve\Steam").SteamPath
-    } catch {
-        Write-Host "❌ Steam no detectado" -ForegroundColor Red
-        return $null
+function DescargarArchivo($url, $destino) {
+
+    $request = [System.Net.HttpWebRequest]::Create($url)
+    $response = $request.GetResponse()
+
+    $total = $response.ContentLength
+    $stream = $response.GetResponseStream()
+
+    $file = [System.IO.File]::Create($destino)
+
+    $buffer = New-Object byte[] 8192
+    $totalRead = 0
+
+    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+
+        $file.Write($buffer, 0, $read)
+        $totalRead += $read
+
+        if ($total -gt 0) {
+
+            $percent = [math]::Round(($totalRead / $total) * 100)
+            $bars = [math]::Floor($percent / 4)
+            $line = "[" + ("█" * $bars) + ("░" * (25 - $bars)) + "]"
+
+            Write-Host "`rDescargando $line $percent%" -NoNewline -ForegroundColor Cyan
+        }
     }
+
+    $file.Close()
+    $stream.Close()
+    $response.Close()
+
+    Write-Host ""
 }
 
 # =============================
-# REINICIAR STEAM
+# STEAM
 # =============================
+
+function ObtenerSteam {
+    try { return (Get-ItemProperty "HKCU:\Software\Valve\Steam").SteamPath }
+    catch { return $null }
+}
 
 function ReiniciarSteam {
 
@@ -57,14 +89,11 @@ function ReiniciarSteam {
     Get-Process steam -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
 
-    $exe = "$SteamPath\steam.exe"
-    if (Test-Path $exe) {
-        Start-Process $exe
-    }
+    Start-Process "$SteamPath\steam.exe"
 }
 
 # =============================
-# EJECUTAR PLUGIN OCULTO
+# PLUGIN OCULTO
 # =============================
 
 function EjecutarPluginAuto {
@@ -73,28 +102,21 @@ function EjecutarPluginAuto {
     if (-not $SteamPath) { return }
 
     $pluginExe = "$SteamPath\config\stplug-in\stplug.exe"
-
     if (!(Test-Path $pluginExe)) { return }
 
-    try {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $pluginExe
+    $psi.WindowStyle = "Hidden"
+    $psi.CreateNoWindow = $true
+    $psi.UseShellExecute = $false
 
-        Write-Host "Inicializando sistema..." -ForegroundColor DarkGray
+    $proc = [System.Diagnostics.Process]::Start($psi)
 
-        $psi = New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName = $pluginExe
-        $psi.WindowStyle = "Hidden"
-        $psi.CreateNoWindow = $true
-        $psi.UseShellExecute = $false
+    Start-Sleep 6
 
-        $proc = [System.Diagnostics.Process]::Start($psi)
-
-        Start-Sleep 6
-
-        if ($proc -and !$proc.HasExited) {
-            $proc.Kill()
-        }
-
-    } catch {}
+    if ($proc -and !$proc.HasExited) {
+        $proc.Kill()
+    }
 }
 
 # =============================
@@ -112,12 +134,12 @@ function InstalarPlugin {
     $URL = "https://github.com/blackbonesgamer-eng/BlackBones-Tools/releases/download/v1.0/st-setup-1.8.30.exe"
     $EXE = "$Temp\plugin.exe"
 
-    Invoke-WebRequest $URL -OutFile $EXE -UseBasicParsing
+    DescargarArchivo $URL $EXE
     Start-Process $EXE -ArgumentList "/S" -Wait
 
     Write-Host "✅ Plugin instalado" -ForegroundColor Green
 
-    # 🔥 ELIMINAR SOLO ACCESOS DEL PLUGIN (SEGURO)
+    # eliminar accesos solo plugin
     $desktop = [Environment]::GetFolderPath("Desktop")
 
     Get-ChildItem $desktop -Filter "*.lnk" -ErrorAction SilentlyContinue |
@@ -129,16 +151,10 @@ function InstalarPlugin {
     Pause
 }
 
-# =============================
-# ACTUALIZAR PLUGIN
-# =============================
-
-function ActualizarPlugin {
-    InstalarPlugin
-}
+function ActualizarPlugin { InstalarPlugin }
 
 # =============================
-# ACTIVAR JUEGOS (TOKENS)
+# TOKENS
 # =============================
 
 function ActivarJuegos {
@@ -162,8 +178,7 @@ function ActivarJuegos {
         Write-Host "$($i+1)) $($tokens[$i].name)" -ForegroundColor Yellow
     }
 
-    Write-Host ""
-    $sel = Read-Host "Seleccione números (ej: 1,3)"
+    $sel = Read-Host "Seleccione números"
 
     foreach ($n in ($sel -split ",")) {
 
@@ -174,14 +189,12 @@ function ActivarJuegos {
             $file = $tokens[$idx]
             $destFile = "$Destino\$($file.name)"
 
-            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+            DescargarArchivo $file.download_url $destFile
         }
     }
 
     EjecutarPluginAuto
     ReiniciarSteam
-
-    Write-Host "✅ Tokens instalados correctamente" -ForegroundColor Green
     Pause
 }
 
@@ -193,7 +206,6 @@ function EliminarTokens {
 
     Clear-Host
     Write-Host "🗑 ELIMINAR TOKENS" -ForegroundColor Red
-    Write-Host ""
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
@@ -202,17 +214,15 @@ function EliminarTokens {
     $files = Get-ChildItem $Destino -Filter *.lua
 
     for ($i = 0; $i -lt $files.Count; $i++) {
-        Write-Host "$($i+1)) $($files[$i].Name)" -ForegroundColor Yellow
+        Write-Host "$($i+1)) $($files[$i].Name)"
     }
 
-    Write-Host ""
     Write-Host "A) Eliminar todos"
 
-    $sel = Read-Host "Seleccione número o A"
+    $sel = Read-Host "Seleccione"
 
     if ($sel -eq "A") {
         Remove-Item "$Destino\*.lua" -Force
-        Write-Host "✅ Tokens eliminados"
         Pause
         return
     }
@@ -221,14 +231,13 @@ function EliminarTokens {
 
     if ($index -ge 0 -and $index -lt $files.Count) {
         Remove-Item $files[$index].FullName -Force
-        Write-Host "✅ Token eliminado"
     }
 
     Pause
 }
 
 # =============================
-# INSTALAR COMPLEMENTOS (MODS)
+# COMPLEMENTOS
 # =============================
 
 function InstalarComplementos {
@@ -240,11 +249,10 @@ function InstalarComplementos {
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/complementos"
     $items = @(Invoke-RestMethod -Uri $Api -Headers @{ "User-Agent" = "PowerShell" })
 
-    # Mods = carpetas + zip
     $mods = $items | Where-Object { $_.type -eq "dir" -or $_.name -like "*.zip" }
 
     for ($i = 0; $i -lt $mods.Count; $i++) {
-        Write-Host "$($i+1)) $($mods[$i].name)" -ForegroundColor Yellow
+        Write-Host "$($i+1)) $($mods[$i].name)"
     }
 
     $sel = Read-Host "Seleccione número"
@@ -296,55 +304,47 @@ function InstalarComplementos {
 
     $temp = "$env:TEMP\bb_mod"
     if (Test-Path $temp) { Remove-Item $temp -Recurse -Force }
-    New-Item -ItemType Directory -Path $temp | Out-Null
 
     # =============================
-    # SI ES ZIP
+    # CASO ZIP
     # =============================
 
     if ($mod.name -like "*.zip") {
 
-        $zipFile = "$temp\mod.zip"
+        $zipFile = "$env:TEMP\mod.zip"
+        Write-Host "Descargando ZIP..." -ForegroundColor Cyan
 
-        Write-Host "Descargando mod ZIP..." -ForegroundColor Cyan
-        Invoke-WebRequest $mod.download_url -OutFile $zipFile -UseBasicParsing
+        DescargarArchivo $mod.download_url $zipFile
 
-        Write-Host "Extrayendo..." -ForegroundColor Cyan
         Expand-Archive $zipFile -DestinationPath $temp -Force
-
         $source = Get-ChildItem $temp | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
-        if ($source) {
-            Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
-        }
-
+        Copy-Item "$($source.FullName)\*" $GamePath -Recurse -Force
     }
-    else {
 
-        # =============================
-        # SI ES CARPETA NORMAL
-        # =============================
+    # =============================
+    # CASO CARPETA (METODO ORIGINAL)
+    # =============================
 
-        $tempZip = "$env:TEMP\bb_repo.zip"
-        $tempExtract = "$env:TEMP\bb_repo"
+    if ($mod.type -eq "dir") {
+
+        $repoZip = "$env:TEMP\repo.zip"
+        $repoExtract = "$env:TEMP\repo"
 
         $zipUrl = "https://codeload.github.com/blackbonesgamer-eng/BlackBones-Tools/zip/refs/heads/main"
 
-        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+        Write-Host "Descargando archivos..." -ForegroundColor Cyan
+        DescargarArchivo $zipUrl $repoZip
 
-        if (Test-Path $tempExtract) {
-            Remove-Item $tempExtract -Recurse -Force
-        }
+        Expand-Archive $repoZip -DestinationPath $repoExtract -Force
 
-        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
-
-        $repoFolder = Get-ChildItem $tempExtract | Select-Object -First 1
+        $repoFolder = Get-ChildItem $repoExtract | Select-Object -First 1
         $modSource = Join-Path $repoFolder.FullName "complementos\$($mod.name)"
 
         Copy-Item "$modSource\*" $GamePath -Recurse -Force
     }
 
-    Write-Host "✅ Complemento instalado correctamente"
+    Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
 
@@ -362,7 +362,7 @@ while ($true) {
     Write-Host "2) Actualizar Plugin"
     Write-Host "3) Activar Juegos"
     Write-Host "4) Eliminar Tokens"
-    Write-Host "5) Instalar Bypass"
+    Write-Host "5) Instalar Complementos"
     Write-Host "0) Salir"
     Write-Host "==================================" -ForegroundColor Magenta
     Write-Host ""
@@ -377,10 +377,13 @@ while ($true) {
         "4" { EliminarTokens }
         "5" { InstalarComplementos }
         "0" { break }
-
-        default { Write-Host "Opción inválida" }
     }
 }
+
+
+
+
+
 
 
 
