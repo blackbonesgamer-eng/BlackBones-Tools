@@ -99,6 +99,53 @@ function DescargarArchivo($url, $destino) {
 }
 
 # =============================
+# PREPARAR MOD UNIVERSAL
+# =============================
+
+function PrepararModUniversal($GamePath) {
+
+    Write-Host ""
+    Write-Host "🔧 Preparando entorno universal..." -ForegroundColor Cyan
+
+    try {
+        Get-ChildItem $GamePath -Recurse -Force | Unblock-File -ErrorAction SilentlyContinue
+    } catch {}
+
+    try {
+        icacls $GamePath /grant Everyone:F /T /C | Out-Null
+    } catch {}
+
+    $vcInstalled = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
+        | Where-Object { $_.DisplayName -like "*Visual C++*" }
+
+    if (-not $vcInstalled) {
+
+        Write-Host "Instalando Visual C++..." -ForegroundColor Yellow
+
+        $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        $vcExe = "$env:TEMP\vc_redist.exe"
+
+        DescargarArchivo $vcUrl $vcExe
+        Start-Process $vcExe -ArgumentList "/install /quiet /norestart" -Wait
+    }
+
+    if (!(Test-Path "$env:SystemRoot\System32\d3dx9_43.dll")) {
+
+        Write-Host "Instalando DirectX..." -ForegroundColor Yellow
+
+        $dxUrl = "https://download.microsoft.com/download/1/1/C/11C8C1E3-7E52-4F9F-AE1F-CE2C7C3A6F2E/directx_Jun2010_redist.exe"
+        $dxExe = "$env:TEMP\directx.exe"
+        $dxFolder = "$env:TEMP\directx"
+
+        DescargarArchivo $dxUrl $dxExe
+        Start-Process $dxExe -ArgumentList "/Q /T:$dxFolder" -Wait
+        Start-Process "$dxFolder\DXSETUP.exe" -ArgumentList "/silent" -Wait
+    }
+
+    Write-Host "✔ Entorno listo" -ForegroundColor Green
+}
+
+# =============================
 # EJECUTAR PLUGIN OCULTO
 # =============================
 
@@ -373,7 +420,10 @@ function InstalarComplementos {
 
         Copy-Item "$modSource\*" $GamePath -Recurse -Force
     }
-
+   
+   # 🔥 NUEVA LINEA UNIVERSAL
+    PrepararModUniversal $GamePath
+    
     Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
@@ -411,6 +461,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
