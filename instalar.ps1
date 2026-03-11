@@ -199,7 +199,9 @@ function InstalarPlugin {
 
     Write-Host "✅ Plugin instalado" -ForegroundColor Green
 
-    # 🔥 ELIMINAR SOLO ACCESOS DEL PLUGIN (SEGURO)
+    AplicarSteamToolsFix
+
+    # eliminar accesos directos
     $desktop = [Environment]::GetFolderPath("Desktop")
 
     Get-ChildItem $desktop -Filter "*.lnk" -ErrorAction SilentlyContinue |
@@ -207,8 +209,8 @@ function InstalarPlugin {
     Remove-Item -Force -ErrorAction SilentlyContinue
 
     EjecutarPluginAuto
+
     ReiniciarSteam
-    Pause
 }
 
 # =============================
@@ -265,6 +267,41 @@ function ActivarJuegos {
 
     Write-Host "✅ Tokens instalados correctamente" -ForegroundColor Green
     Pause
+}
+
+function AplicarSteamToolsFix {
+
+    Write-Host "Checking SteamTools fix..." -ForegroundColor Cyan
+
+    $SteamPath = (Get-ItemProperty "HKCU:\Software\Valve\Steam").SteamPath
+    $dllOld = "$SteamPath\xinput1_4.dll"
+    $dllNew = "$SteamPath\dwmapi.dll"
+
+    $fixFlag = "$env:LOCALAPPDATA\BlackBones\steamtools_fix_applied.txt"
+
+    if (!(Test-Path "$env:LOCALAPPDATA\BlackBones")) {
+        New-Item -ItemType Directory -Path "$env:LOCALAPPDATA\BlackBones" | Out-Null
+    }
+
+    if (Test-Path $fixFlag) {
+        Write-Host "SteamTools fix already applied." -ForegroundColor Gray
+        return
+    }
+
+    if (Test-Path $dllOld) {
+
+        try {
+            Rename-Item $dllOld $dllNew -Force
+            Set-Content $fixFlag "applied"
+            Write-Host "SteamTools fix applied successfully." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Failed to apply SteamTools fix." -ForegroundColor Yellow
+        }
+
+    } else {
+        Write-Host "DLL not found. Fix not required." -ForegroundColor Gray
+    }
 }
 
 # =============================
@@ -461,6 +498,7 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
 
 
 
