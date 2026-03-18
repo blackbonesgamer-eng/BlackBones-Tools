@@ -1,0 +1,13 @@
+-- KINGDOM HEARTS HD 2.8​​‌‌‌​​​​​‌‌‌​​‌​​‌‌‌​​​​​‌‌​​​​​​‌‌​​​‌​​‌‌​‌‌​​​‌‌​​​‌​​‌‌‌​​‌​‌‌​​‌​​​​‌‌​‌​‌​​‌‌​​​‌​‌‌​​​‌‌​‌‌​​‌​‌​​‌‌​​​‌​​‌‌​​​​​​‌‌‌​​​ Final Chapter Prologue
+-- AppID 2552440 | Generated on 2026-03-17 06:12 UTC | openlua.cloud
+
+-- Main Application
+addappid(2552440)
+
+-- Content Depots (6)
+addappid(2552442, 1, "aa2a72186b9d5b0e6051ef85923163544ddfd147950510bae59aaafa9ba00118") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows
+addappid(2552443, 1, "e5176bdda321bbcc30b63de2f1bd4c65627192ac6ab3873322f163f258574cf5") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows
+addappid(2552444, 1, "bfce5797607ede0bf1d4da6979773463c31c6040d20c5f90f563ecd1c2ed6b76") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows
+addappid(2552445, 1, "cbb8de50bd24129bbb6907a8db75af671ea013054811ccdd1cfa44fd094f2ecf") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows
+addappid(2552446, 1, "ec25765b66a429dc12261f550d4cdf2a9bb143a632c580a5dc76c5e6b5729696") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows
+addappid(2552447, 1, "3a3cd77bcccfef0c5c5e8ce6b389516901f10bf009ed1ee31c6cac12b88d16d4") -- KINGDOM HEARTS HD 2.8 Final Chapter Prologue - Windows

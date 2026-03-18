@@ -99,6 +99,53 @@ function DescargarArchivo($url, $destino) {
 }
 
 # =============================
+# PREPARAR MOD UNIVERSAL
+# =============================
+
+function PrepararModUniversal($GamePath) {
+
+    Write-Host ""
+    Write-Host "🔧 Preparando entorno universal..." -ForegroundColor Cyan
+
+    try {
+        Get-ChildItem $GamePath -Recurse -Force | Unblock-File -ErrorAction SilentlyContinue
+    } catch {}
+
+    try {
+        icacls $GamePath /grant Everyone:F /T /C | Out-Null
+    } catch {}
+
+    $vcInstalled = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* `
+        | Where-Object { $_.DisplayName -like "*Visual C++*" }
+
+    if (-not $vcInstalled) {
+
+        Write-Host "Instalando Visual C++..." -ForegroundColor Yellow
+
+        $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        $vcExe = "$env:TEMP\vc_redist.exe"
+
+        DescargarArchivo $vcUrl $vcExe
+        Start-Process $vcExe -ArgumentList "/install /quiet /norestart" -Wait
+    }
+
+    if (!(Test-Path "$env:SystemRoot\System32\d3dx9_43.dll")) {
+
+        Write-Host "Instalando DirectX..." -ForegroundColor Yellow
+
+        $dxUrl = "https://download.microsoft.com/download/1/1/C/11C8C1E3-7E52-4F9F-AE1F-CE2C7C3A6F2E/directx_Jun2010_redist.exe"
+        $dxExe = "$env:TEMP\directx.exe"
+        $dxFolder = "$env:TEMP\directx"
+
+        DescargarArchivo $dxUrl $dxExe
+        Start-Process $dxExe -ArgumentList "/Q /T:$dxFolder" -Wait
+        Start-Process "$dxFolder\DXSETUP.exe" -ArgumentList "/silent" -Wait
+    }
+
+    Write-Host "✔ Entorno listo" -ForegroundColor Green
+}
+
+# =============================
 # EJECUTAR PLUGIN OCULTO
 # =============================
 
@@ -152,7 +199,9 @@ function InstalarPlugin {
 
     Write-Host "✅ Plugin instalado" -ForegroundColor Green
 
-    # 🔥 ELIMINAR SOLO ACCESOS DEL PLUGIN (SEGURO)
+    AplicarSteamToolsFix
+
+    # eliminar accesos directos
     $desktop = [Environment]::GetFolderPath("Desktop")
 
     Get-ChildItem $desktop -Filter "*.lnk" -ErrorAction SilentlyContinue |
@@ -160,8 +209,8 @@ function InstalarPlugin {
     Remove-Item -Force -ErrorAction SilentlyContinue
 
     EjecutarPluginAuto
+
     ReiniciarSteam
-    Pause
 }
 
 # =============================
@@ -176,11 +225,152 @@ function ActualizarPlugin {
 # ACTIVAR JUEGOS (TOKENS)
 # =============================
 
-function ActivarJuegos {
+function NormalizarTextoBusqueda($texto) {
 
-    Clear-Host
-    Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
-    Write-Host ""
+    if ([string]::IsNullOrWhiteSpace($texto)) { return "" }
+
+    $valor = $texto.ToLowerInvariant()
+    $valor = $valor -replace '\.lua$',''
+    $valor = $valor -replace '[_\.-]+',' '
+    $valor = $valor -replace '\s+',' '
+
+    return $valor.Trim()
+}
+
+function ObtenerNombreVisibleToken($archivo) {
+
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($archivo)
+    $base = $base -replace '[_\.]+',' '
+    $base = $base -replace '-\d+$',''
+    $base = $base -replace '\s+',' '
+    $base = $base.Trim(' ','-')
+
+    if ([string]::IsNullOrWhiteSpace($base)) {
+        return $archivo
+    }
+
+    return $base
+}
+
+function ObtenerTokensFiltrados($tokens, $busqueda) {
+
+    if ([string]::IsNullOrWhiteSpace($busqueda)) {
+        return @($tokens)
+    }
+
+    $terminos = @(NormalizarTextoBusqueda $busqueda).Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+
+    $resultado = foreach ($token in $tokens) {
+
+        $texto = NormalizarTextoBusqueda($token.SearchText)
+        $coincide = $true
+
+        foreach ($termino in $terminos) {
+            if ($texto -notlike "*$termino*") {
+                $coincide = $false
+                break
+            }
+        }
+
+        if ($coincide) { $token }
+    }
+
+    return @($resultado)
+}
+
+function SeleccionarTokensInteractivo($tokens) {
+
+    $busqueda = ""
+
+    while ($true) {
+
+        $filtrados = @(ObtenerTokensFiltrados $tokens $busqueda)
+        $maxMostrar = 20
+        $visibles = @($filtrados | Select-Object -First $maxMostrar)
+
+        Clear-Host
+        Write-Host "🎮 GAME ACTIVATION CENTER 🎮" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Buscar juego: " -NoNewline
+        Write-Host $busqueda -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Escribe para filtrar en tiempo real | ENTER = seleccionar | BACKSPACE = borrar | ESC = cancelar" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "Resultados encontrados: $($filtrados.Count)" -ForegroundColor Cyan
+        Write-Host ""
+
+        if ($filtrados.Count -eq 0) {
+            Write-Host "No hay coincidencias." -ForegroundColor Red
+        }
+        else {
+            for ($i = 0; $i -lt $visibles.Count; $i++) {
+                Write-Host ("[{0}] {1}" -f ($i + 1), $visibles[$i].DisplayName) -ForegroundColor Yellow
+                Write-Host ("     Archivo: {0}" -f $visibles[$i].name) -ForegroundColor DarkGray
+            }
+
+            if ($filtrados.Count -gt $maxMostrar) {
+                Write-Host "" 
+                Write-Host "Mostrando los primeros $maxMostrar resultados. Sigue escribiendo para reducir la lista." -ForegroundColor DarkGray
+            }
+        }
+
+        $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+
+        switch ($key.VirtualKeyCode) {
+            13 {
+                if ($filtrados.Count -eq 0) { continue }
+
+                Write-Host ""
+                $sel = Read-Host "Elige número(s) de la lista visible (ej: 1,3) o B para volver"
+
+                if ($sel -match '^[Bb]$') { continue }
+
+                $seleccionados = @()
+                $ok = $true
+
+                foreach ($n in ($sel -split ',')) {
+                    $valor = $n.Trim()
+
+                    if ($valor -notmatch '^\d+$') {
+                        $ok = $false
+                        break
+                    }
+
+                    $idx = [int]$valor - 1
+
+                    if ($idx -lt 0 -or $idx -ge $visibles.Count) {
+                        $ok = $false
+                        break
+                    }
+
+                    $seleccionados += $visibles[$idx]
+                }
+
+                if ($ok -and $seleccionados.Count -gt 0) {
+                    return @($seleccionados | Select-Object -Unique)
+                }
+
+                Write-Host "Selección inválida." -ForegroundColor Red
+                Start-Sleep 1
+            }
+            8 {
+                if ($busqueda.Length -gt 0) {
+                    $busqueda = $busqueda.Substring(0, $busqueda.Length - 1)
+                }
+            }
+            27 {
+                return @()
+            }
+            default {
+                if (-not [char]::IsControl($key.Character)) {
+                    $busqueda += $key.Character
+                }
+            }
+        }
+    }
+}
+
+function ActivarJuegos {
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
@@ -191,33 +381,75 @@ function ActivarJuegos {
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
     $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
 
-    $tokens = $files | Where-Object { $_.name -like "*.lua" }
-
-    for ($i = 0; $i -lt $tokens.Count; $i++) {
-        Write-Host "$($i+1)) $($tokens[$i].name)" -ForegroundColor Yellow
+    $tokens = foreach ($file in ($files | Where-Object { $_.name -like "*.lua" })) {
+        [PSCustomObject]@{
+            name = $file.name
+            download_url = $file.download_url
+            DisplayName = ObtenerNombreVisibleToken $file.name
+            SearchText = ((ObtenerNombreVisibleToken $file.name) + " " + $file.name)
+        }
     }
 
+    $seleccionados = @(SeleccionarTokensInteractivo $tokens)
+
+    if ($seleccionados.Count -eq 0) {
+        Write-Host "Operación cancelada." -ForegroundColor Yellow
+        Pause
+        return
+    }
+
+    Clear-Host
+    Write-Host "Descargando tokens seleccionados..." -ForegroundColor Cyan
     Write-Host ""
-    $sel = Read-Host "Seleccione números (ej: 1,3)"
 
-    foreach ($n in ($sel -split ",")) {
+    foreach ($file in $seleccionados) {
 
-        $idx = [int]$n - 1
-
-        if ($idx -ge 0 -and $idx -lt $tokens.Count) {
-
-            $file = $tokens[$idx]
-            $destFile = "$Destino\$($file.name)"
-
-            Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
-        }
+        $destFile = "$Destino\$($file.name)"
+        Write-Host "Descargando: $($file.DisplayName)" -ForegroundColor Yellow
+        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
     }
 
     EjecutarPluginAuto
     ReiniciarSteam
 
+    Write-Host ""
     Write-Host "✅ Tokens instalados correctamente" -ForegroundColor Green
     Pause
+}
+
+function AplicarSteamToolsFix {
+
+    Write-Host "Checking SteamTools fix..." -ForegroundColor Cyan
+
+    $SteamPath = (Get-ItemProperty "HKCU:\Software\Valve\Steam").SteamPath
+    $dllOld = "$SteamPath\xinput1_4.dll"
+    $dllNew = "$SteamPath\dwmapi.dll"
+
+    $fixFlag = "$env:LOCALAPPDATA\BlackBones\steamtools_fix_applied.txt"
+
+    if (!(Test-Path "$env:LOCALAPPDATA\BlackBones")) {
+        New-Item -ItemType Directory -Path "$env:LOCALAPPDATA\BlackBones" | Out-Null
+    }
+
+    if (Test-Path $fixFlag) {
+        Write-Host "SteamTools fix already applied." -ForegroundColor Gray
+        return
+    }
+
+    if (Test-Path $dllOld) {
+
+        try {
+            Rename-Item $dllOld $dllNew -Force
+            Set-Content $fixFlag "applied"
+            Write-Host "SteamTools fix applied successfully." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Failed to apply SteamTools fix." -ForegroundColor Yellow
+        }
+
+    } else {
+        Write-Host "DLL not found. Fix not required." -ForegroundColor Gray
+    }
 }
 
 # =============================
@@ -373,7 +605,10 @@ function InstalarComplementos {
 
         Copy-Item "$modSource\*" $GamePath -Recurse -Force
     }
-
+   
+   # 🔥 NUEVA LINEA UNIVERSAL
+    PrepararModUniversal $GamePath
+    
     Write-Host "✅ Complemento instalado correctamente" -ForegroundColor Green
     Pause
 }
@@ -411,6 +646,8 @@ while ($true) {
         default { Write-Host "Opción inválida" }
     }
 }
+
+
 
 
 
