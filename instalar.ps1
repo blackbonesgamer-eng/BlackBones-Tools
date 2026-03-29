@@ -230,7 +230,7 @@ function NormalizarTextoBusqueda($texto) {
     if ([string]::IsNullOrWhiteSpace($texto)) { return "" }
 
     $valor = $texto.ToLowerInvariant()
-    $valor = $valor -replace '\.lua$',''
+    $valor = $valor -replace '\.(lua|zip)$',''
     $valor = $valor -replace '[_\.-]+',' '
     $valor = $valor -replace '\s+',' '
 
@@ -370,24 +370,111 @@ function SeleccionarTokensInteractivo($tokens) {
     }
 }
 
+
+function InstalarTokenDesdeZip {
+    param(
+        [Parameter(Mandatory = $true)][object]$Paquete,
+        [Parameter(Mandatory = $true)][string]$SteamPath
+    )
+
+    $DestinoLua = Join-Path $SteamPath "config\stplug-in"
+    $DestinoResto = Join-Path $SteamPath "depotcache"
+
+    New-Item -ItemType Directory -Path $DestinoLua -Force | Out-Null
+    New-Item -ItemType Directory -Path $DestinoResto -Force | Out-Null
+
+    $TempRoot = Join-Path $env:TEMP ("BlackBonesTokenZip_" + [System.Guid]::NewGuid().ToString("N"))
+    $TempZip = Join-Path $TempRoot $Paquete.name
+    $TempExtract = Join-Path $TempRoot "extract"
+
+    try {
+        New-Item -ItemType Directory -Path $TempRoot -Force | Out-Null
+        New-Item -ItemType Directory -Path $TempExtract -Force | Out-Null
+
+        Write-Host "Descargando: $($Paquete.DisplayName)" -ForegroundColor Yellow
+        DescargarArchivo $Paquete.download_url $TempZip
+
+        Write-Host "Extrayendo paquete..." -ForegroundColor Cyan
+        Expand-Archive -Path $TempZip -DestinationPath $TempExtract -Force
+
+        $archivos = @(Get-ChildItem -Path $TempExtract -Recurse -File)
+
+        if ($archivos.Count -eq 0) {
+            Write-Host "❌ El ZIP está vacío o no contiene archivos válidos." -ForegroundColor Red
+            return $false
+        }
+
+        $copiadosLua = 0
+        $copiadosResto = 0
+
+        foreach ($archivo in $archivos) {
+            $extension = $archivo.Extension.ToLowerInvariant()
+
+            if ($extension -eq ".lua") {
+                $destinoFinal = Join-Path $DestinoLua $archivo.Name
+                Copy-Item $archivo.FullName $destinoFinal -Force
+                $copiadosLua++
+            }
+            else {
+                $relativo = $archivo.FullName.Substring($TempExtract.Length).TrimStart('\')
+                $destinoFinal = Join-Path $DestinoResto $relativo
+                $destinoDir = Split-Path $destinoFinal -Parent
+
+                if (!(Test-Path $destinoDir)) {
+                    New-Item -ItemType Directory -Path $destinoDir -Force | Out-Null
+                }
+
+                Copy-Item $archivo.FullName $destinoFinal -Force
+                $copiadosResto++
+            }
+        }
+
+        Write-Host "✔ Instalado: $($Paquete.DisplayName)" -ForegroundColor Green
+        Write-Host "   .lua copiados: $copiadosLua" -ForegroundColor DarkGray
+        Write-Host "   otros archivos: $copiadosResto" -ForegroundColor DarkGray
+        return $true
+    }
+    catch {
+        Write-Host "❌ Error al instalar $($Paquete.DisplayName)" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor DarkYellow
+        return $false
+    }
+    finally {
+        if (Test-Path $TempRoot) {
+            Remove-Item $TempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function ActivarJuegos {
 
     $SteamPath = ObtenerSteam
     if (-not $SteamPath) { Pause; return }
 
-    $Destino = "$SteamPath\config\stplug-in"
-    New-Item -ItemType Directory -Path $Destino -Force | Out-Null
-
     $Api = "https://api.github.com/repos/blackbonesgamer-eng/BlackBones-Tools/contents/tokens"
-    $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
 
-    $tokens = foreach ($file in ($files | Where-Object { $_.name -like "*.lua" })) {
+    try {
+        $files = @(Invoke-RestMethod $Api -Headers @{ "User-Agent" = "PowerShell" })
+    }
+    catch {
+        Write-Host "❌ No se pudo leer la carpeta tokens del repo." -ForegroundColor Red
+        Pause
+        return
+    }
+
+    $tokens = foreach ($file in ($files | Where-Object { $_.name -like "*.zip" })) {
         [PSCustomObject]@{
             name = $file.name
             download_url = $file.download_url
             DisplayName = ObtenerNombreVisibleToken $file.name
             SearchText = ((ObtenerNombreVisibleToken $file.name) + " " + $file.name)
         }
+    }
+
+    if ($tokens.Count -eq 0) {
+        Write-Host "❌ No se encontraron paquetes .zip dentro de la carpeta tokens." -ForegroundColor Red
+        Pause
+        return
     }
 
     $seleccionados = @(SeleccionarTokensInteractivo $tokens)
@@ -399,21 +486,31 @@ function ActivarJuegos {
     }
 
     Clear-Host
-    Write-Host "Descargando tokens seleccionados..." -ForegroundColor Cyan
+    Write-Host "Instalando tokens desde ZIP..." -ForegroundColor Cyan
     Write-Host ""
+
+    $instalados = 0
 
     foreach ($file in $seleccionados) {
-
-        $destFile = "$Destino\$($file.name)"
-        Write-Host "Descargando: $($file.DisplayName)" -ForegroundColor Yellow
-        Invoke-WebRequest $file.download_url -OutFile $destFile -UseBasicParsing
+        if (InstalarTokenDesdeZip -Paquete $file -SteamPath $SteamPath) {
+            $instalados++
+            Write-Host ""
+        }
     }
 
-    EjecutarPluginAuto
-    ReiniciarSteam
+    if ($instalados -gt 0) {
+        EjecutarPluginAuto
+        ReiniciarSteam
 
-    Write-Host ""
-    Write-Host "✅ Tokens instalados correctamente" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "✅ Tokens instalados correctamente desde ZIP" -ForegroundColor Green
+        Write-Host "Destino .lua   -> $SteamPath\config\stplug-in" -ForegroundColor DarkGray
+        Write-Host "Destino resto  -> $SteamPath\depotcache" -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "❌ No se pudo instalar ningún paquete ZIP." -ForegroundColor Red
+    }
+
     Pause
 }
 
